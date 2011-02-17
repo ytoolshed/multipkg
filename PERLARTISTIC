@@ -2,15 +2,15 @@ PERLARTISTIC(1)       User Contributed Perl Documentation      PERLARTISTIC(1)
 
 
 
-NNAAMMEE
+NAME
        perlartistic - the Perl Artistic License
 
-SSYYNNOOPPSSIISS
+SYNOPSIS
         You can refer to this document in Pod via "L<perlartistic>"
         Or you can see this document by entering "perldoc perlartistic"
 
-DDEESSCCRRIIPPTTIIOONN
-       This is ""TThhee AArrttiissttiicc LLiicceennssee"". It’s here so that modules, programs,
+DESCRIPTION
+       This is "The Artistic License". It’s here so that modules, programs,
        etc., that want to declare this as their distribution license, can link
        to it.
 
@@ -18,8 +18,8 @@ DDEESSCCRRIIPPTTIIOONN
        redistributed and/or modified; for the other one, the GNU General
        Public License, see the perlgpl.
 
-TThhee ""AArrttiissttiicc LLiicceennssee""
-       PPrreeaammbbllee
+The "Artistic License"
+       Preamble
 
        The intent of this document is to state the conditions under which a
        Package may be copied, such that the Copyright Holder maintains some
@@ -28,7 +28,7 @@ TThhee ""AArrttiissttiicc LLiicceennssee""
        the Package in a more-or-less customary fashion, plus the right to make
        reasonable modifications.
 
-       DDeeffiinniittiioonnss
+       Definitions
 
 
        "Package"
@@ -60,7 +60,7 @@ TThhee ""AArrttiissttiicc LLiicceennssee""
            recipients of the item may redistribute it under the same
            conditions they received it.
 
-       CCoonnddiittiioonnss
+       Conditions
 
 
        1.  You may make and give away verbatim copies of the source form of
