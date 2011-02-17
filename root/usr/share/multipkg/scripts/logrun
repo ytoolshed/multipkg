@@ -1,0 +1,5 @@
+#!/bin/sh
+mkdir -p ./main
+chown -R nobody ./main
+exec setuidgid nobody multilog t I s200000 n5 ./main
+

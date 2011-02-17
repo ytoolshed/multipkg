@@ -1,0 +1,118 @@
+#!/usr/local/bin/perl -w
+# Copyright (c) 2011 Yahoo! Inc. All rights reserved.
+
+use strict;
+
+use constant MULTIPKG_VERSION => '__MULTIPKG_BUILD_VERSION__';
+
+use Seco::Multipkg;
+use Getopt::Long;
+
+# metadata tracing
+my $init_metadata = { 'actionlog' => [
+    { 'actor' => whoami(),
+        'time' => time(),
+        'type' => 'build',
+        'actions' => [
+            {
+                'summary' => 'multipkg initialiation',
+                'text' => "multipkg version: " . MULTIPKG_VERSION . "\n" .
+                          "invoked as: $0 " . join(' ', @ARGV) . "\n",
+            },
+        ],
+    },
+    ],
+};
+
+my %opt = ( 'h|help' => "Display this help",
+            'v|verbose' => "Be verbose",
+            'k|keep-files' => "Keep files after build",
+            's|set=s' => "List of variables to set",
+            'f|force' => "Force build on sanity-check failure",
+            'p|platform=s' => "Include this platform",
+            't|testbuild' => "When building from a work dir, not source control",
+          );
+
+my %o;
+usage() unless GetOptions(\%o, keys %opt);
+usage() if($o{h});
+usage() unless(scalar @ARGV);
+
+my %overrides = ();
+if($o{s}) {
+    my @sets = split /,/, $o{s};
+    for (@sets) {
+        my ($k, $v) = split /=/, $_;
+        $overrides{$k} = $v;
+    }
+}
+
+# release must be specified unless we are making a test build.
+unless ($o{t} || defined($overrides{'release'})) {
+    print "*****************************************************************************\n"
+        . "multipkg cannot be run directly by user unless building a test release via -t\n"
+        . "*****************************************************************************\n"
+        . "Use svn-multipkg/p4-multipkg to build directly from source checkout when\n"
+        . "creating packages for production deployment.\n\n";
+    exit(1);
+}
+
+for(@ARGV) {
+    my $mp = Seco::Multipkg->new(directory => $_,
+                                 cleanup => !$o{k},
+                                 force => $o{f},
+                                 warn_on_error => 1,
+                                 verbose => $o{v},
+                                 platform => $o{p},
+                                 overrides => \%overrides,
+                                 meta => $init_metadata)
+      or exit 1;
+    
+    my $package = $mp->build
+      or die $mp->error . "\n";
+    
+    print "$package\n";
+}
+
+sub usage {
+    my $msg = shift;
+    $msg = "\n$msg\n" if($msg);
+    $msg ||= '';
+    
+    print "NOTE: -t is required to run multipkg by hand; production package builds must\n"
+        . "use svn-multipkg/p4-multipkg to build directly from source checkout\n\n";
+    print "Usage: $0 [options]\n";
+    
+    my @array;
+    foreach my $key (keys %opt) {
+        my ($left, $right) = split /[=:]/, $key;
+        my ($a, $b) = split /\|/, $left;
+        if($b) {
+            $left = "-$a, --$b";
+        } else {
+            $left = "    --$a";
+        }
+        $left = substr($left . (' 'x20), 0, 20);
+        push @array, "$left $opt{$key}\n";
+    }
+    
+    print sort @array;
+
+    die "$msg\n";
+}
+
+# generate identifying string for this host/user
+sub whoami {
+    my $name;
+    eval {
+        require Sys::Hostname;
+        
+        my $user = getpwuid($<);
+        $user = 'unknown' unless (defined($user));
+        
+        $name = $user . '@' . Sys::Hostname->hostname();
+    };
+    $name = 'unknown' if ($@);
+    
+    return $name;
+}

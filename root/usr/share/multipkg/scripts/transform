@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Could implement multipkg version embedding here, etc
+exit 0

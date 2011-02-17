@@ -1,0 +1,564 @@
+#!/usr/local/bin/perl -w
+# Copyright (c) 2011 Yahoo! Inc. All rights reserved.
+
+use strict;
+
+use constant MULTIPKG_VERSION => '__MULTIPKG_BUILD_VERSION__';
+
+use File::Temp qw/tempdir/;
+use File::Path qw/mkpath/;
+use File::Basename qw/dirname/;
+use Time::Local qw/timegm/;
+
+use YAML::Syck;
+
+use Seco::Getopt;
+
+
+# XXX: this is actually a kernel compile-time constant (MAX_ARG_PAGES), which
+# currently works out to 128k (including environment space) on x86.
+my $MAX_ARG_SIZE = 65536;
+
+# metadata tracing
+my @actions;
+my $init_action = {
+    'actor' => whoami(),
+    'time' => time(),
+    'type' => 'build',
+    'actions' => [
+        {
+            'summary' => 'p4-multipkg initialiation',
+            'text' => "p4-multipkg version: " . MULTIPKG_VERSION . "\n" .
+                      "invoked as: $0 " . join(' ', @ARGV) . "\n",
+        },
+    ],
+};
+
+my $opt = Seco::Getopt->new(
+    options => {
+        'c|checkout=s' => 'Check out into this dir, don\'t build',
+        'b|basepath=s' => 'base Perforce repository path',
+        'r|rev=s'      => 'check out source at this revision',
+        'k|keep!'      => 'keep the temporary directory after build',
+        'v|verbose!'   => 'verbose',
+        'p|platform=s' => 'multipkg platform',
+        's|set=s'      => 'List of variables to set',
+    },
+    default => {
+        'b' => '//depot/metapkg-ng-packages-yss/',
+        'r' => undef,   # implicit Perforce "HEAD"
+    },
+    required => [ qw/b/ ],
+);
+
+
+my $package = shift || $opt->usage();
+my $depotpath = $opt->get('b');
+
+my $override_vars = (defined($opt->get('s'))) ? $opt->get('s') . ',' : '';
+
+sub vprint {
+    if ($opt->get('v')) {
+	print @_, "\n";
+    }
+}
+
+
+
+# Get metadata for everything contained within a given Perforce depot path.
+# Returns a hash keyed by depot path name, of metadata hashes.
+sub get_all_p4_file_metadata {
+	my ($depotpath, $at) = @_;
+	my $metadata = {};
+
+	my $depotpattern = $depotpath . '...' . $at;
+
+	open (P4, '-|', 'p4', 'fstat', $depotpattern)
+		or die "can't run p4 fstat $depotpattern";
+
+	my $valid = 0;
+	my $depotfile;
+	my $md = {};
+	while (<P4>) {
+		chomp;
+
+		# empty line marks end of record.
+		if ($_ eq '') {
+			($valid) || die "failed to parse p4 fstat output";
+
+			$metadata->{$depotfile} = $md;
+			$valid = 0;
+			$md = {};
+
+			next;
+		}
+
+		# perforce allows whitespace in names, but non-printing
+		# characters are not allowed.  so don't have to worry about
+		# newlines, etc.
+		/^\.\.\. (\S+) (.*)$/
+			or die "failed to parse p4 fstat output";
+
+		if ($1 eq 'depotFile') {
+			$depotfile = $2;
+			$valid = 1;
+		} else {
+			$md->{$1} = $2;
+		}
+	}
+	# in case the last record is corrupted, etc
+	if ($valid) {
+		die "failed to parse p4 fstat output";
+	}
+
+	close(P4);
+
+	return $metadata;
+}
+
+
+# Run 'p4 filelog' on a group of files and return all changes for each.
+# use '-i' to also report changes from files prior to branching (eg. renames)
+
+# For a moment I thought that it would suffice to just do: 'p4 filelog ...'
+# but this doesn't report on deletions, thus we'd potentially miss changesets.
+sub p4_run_filelog {
+	my @files = @_;
+	my @changes;
+
+	# use multi-argument open to handle whitespace in file names
+	open(P4, '-|', 'p4', 'filelog', '-i', @files)
+		or die "can't run p4 filelog";
+
+	while (<P4>) {
+		chomp;
+
+		/^\.\.\. #\d+ change (\d+) / or next;
+
+		push @changes, $1;
+	}
+	close(P4);
+
+	return @changes;
+}
+
+
+# estimate the size of args which will be needed to run a p4 command; also
+# take size of the environment into account.  ain't this a great way to talk
+# to the "perforce API"?
+sub p4_estimate_argsize {
+	my $cmd = shift;
+
+	my $size = length('p4 ' . $cmd);
+	for (keys %ENV) {
+		$size += length($_) + length($ENV{$_}) + 2;	# NAME=VALUE\0
+	}
+
+	return $size;
+}
+
+
+# get all changes assocated with all files.  It's more efficient to have p4
+# query multiple files at once, instead of execing a separate p4 process for
+# each file.  However, we are limited by MAX_ARG_SIZE, so do it in batches.
+sub get_all_p4_changes {
+	my $at = shift;
+	my @files = @_;
+	my %changes;
+	my @files_todo;
+
+	my $arg_size = p4_estimate_argsize('filelog -i');
+
+	foreach my $f (@files) {
+		# append $at so we can filter changes appropriately, etc.
+		my $fat = $f . $at;
+
+		# run a batch if we would exceed the argument limit
+		if ($arg_size + length($fat) + 1 > $MAX_ARG_SIZE) {
+			my @chg = p4_run_filelog(@files_todo);
+			map { $changes{$_} = 1 } @chg;
+
+			@files_todo = ();
+			$arg_size = p4_estimate_argsize('filelog -i');
+		}
+
+		# otherwise accumulate the next entry
+		push @files_todo, $fat;
+		$arg_size += length($fat) + 1;
+	}
+	# run the last bit
+	if (@files_todo) {
+		my @chg = p4_run_filelog(@files_todo);
+		map { $changes{$_} = 1 } @chg;
+	}
+
+	# now return all unique changes.
+	return keys %changes;
+}
+
+
+# parse a p4 timestamp of the form "YYYY/MM/DD HH:MM:SS"
+# XXX: note that p4 ignores the $TZ environment variable, and (most likely)
+# uses local time on the server, which should be UTC.
+sub parse_p4_timestamp {
+	my $t = shift;
+
+	($t =~ /^(\d\d\d\d)\/(\d\d)\/(\d\d) (\d\d):(\d\d):(\d\d)$/)
+		or die "invalid p4 timestamp: $t";
+
+	my ($year, $mon, $mday, $hour, $min, $sec) = ($1,$2,$3,$4,$5,$6);
+
+	my $unixtime;
+	eval { $unixtime = timegm($sec, $min, $hour, $mday, $mon - 1, $year) };
+
+	if ($@) {
+		die "invalid timestamp: $t";
+	}
+
+	return $unixtime;
+}
+
+sub p4_run_describe {
+	my @changes = @_;
+	my $chg_metadata;
+
+	# use multi-argument open although it's not strictly needed here
+	open(P4, '-|', 'p4', 'describe', '-s', @changes)
+		or die "can't run p4 describe";
+
+	my $valid = 0;
+	my $changenum;
+	my $chg = {};
+
+	while (<P4>) {
+		chomp;
+
+		if (/^Change (\d+) by (\S+) on (\S+ \S+)/) {
+			if ($valid) {
+				die "failed to parse output from p4 describe";
+			}
+
+			$valid = 1;
+			$changenum = $1;
+			$chg->{user} = $2;
+			$chg->{timestamp} = parse_p4_timestamp($3);
+			$chg->{description} = '';
+
+			# then followed by empty line...
+			my $x = <P4>;
+			chomp $x;
+			if ($x ne '') {
+				die "failed to parse output from p4 describe";
+			}
+
+			next;
+		}
+
+		# skip other stuff like list of files, etc.
+		if (!$valid) {
+			next;
+		}
+
+		# empty line marks end of record
+		if ($_ eq '') {
+			$chg_metadata->{$changenum} = $chg;
+
+			$valid = 0;
+			$chg = {};
+			next;
+		}
+
+		# otherwise, must be a description line
+		if (/^\t(.*)$/) {
+			$chg->{description} .= "$1\n";
+			next;
+		}
+
+		# anything else is a parse error
+		die "unable to parse output from p4 describe";
+	}
+	# make sure the last record isn't corrupted
+	if ($valid) {
+		die "failed to parse output from p4 describe";
+	}
+
+	close(P4);
+
+	return $chg_metadata;
+}
+
+
+# run 'p4 describe -s' to get the text description for each changelist.
+# return a hash by changelist number, of changelist metadata hashes:
+#
+#	user => (username who submited the changelist)
+#	timestamp => (unix time when submitted)
+#	description => (array reference of description text)
+#
+sub get_all_p4_change_descriptions {
+	my @changes = @_;
+
+	my $chg_metadata;
+	my @changes_todo;
+
+	my $arg_size = p4_estimate_argsize('describe -s');
+
+	foreach my $c (@changes) {
+		# run a batch if we would exceed the argument limit
+		if ($arg_size + length($c) + 1 > $MAX_ARG_SIZE) {
+			my $m = p4_run_describe(@changes_todo);
+			map { $chg_metadata->{$_} = $m->{$_} } keys %$m;
+
+			$arg_size = p4_estimate_argsize('describe -s');
+			@changes_todo = ();
+		}
+
+		# otherwise accumulate the next entry
+		push @changes_todo, $c;
+		$arg_size += length($c) + 1;
+	}
+	# run the last bit
+	if (@changes_todo) {
+		my $m = p4_run_describe(@changes_todo);
+		map { $chg_metadata->{$_} = $m->{$_} } keys %$m;
+	}
+
+	# return entire metadata set.
+	return $chg_metadata;
+}
+
+
+# Based on the description from 'p4 help filetypes'
+my %p4_type_aliases = (
+	'ctext'		=> 'text+C',
+	'cxtext'	=> 'text+Cx',
+	'ktext'		=> 'text+k',
+	'kxtext'	=> 'text+kx',
+	'ltext'		=> 'text+F',
+	'tempobj'	=> 'binary+Sw',
+	'ubinary'	=> 'binary+F',
+	'uresource'	=> 'resource+F',
+	'uxbinary'	=> 'binary+Fx',
+	'xbinary'	=> 'binary+x',
+	'xltext'	=> 'text+Fx',
+	'xtempobj'	=> 'binary+Swx',
+	'xtext'		=> 'text+x',
+	'xunicode'	=> 'unicode+x',
+	'xutf16'	=> 'utf16+x'
+);
+
+sub parse_p4_filetype {
+	my $typestr = shift;
+	my ($filetype, $modifiers);
+	my $type;
+	my $mode = 0444;
+
+	if (defined($p4_type_aliases{$typestr})) {
+		$typestr = $p4_type_aliases{$typestr};
+	}
+
+	if ($typestr =~ /^([a-z]+)\+([a-zA-Z]+)$/) {
+		$filetype = $1;
+		$modifiers = $2;
+	} elsif ($typestr =~ /^([a-z]+)$/) {
+		$filetype = $1;
+		$modifiers = '';
+	} else {
+		die "invalid perforce filetype: $typestr\n";
+	}
+
+	# The only modifiers we care about are +w and +x.
+	# XXX: we are going to implicitly force +m on every file
+	# XXX: what about +k?
+	# XXX: +S may imply that we can't fetch some or all revisions older
+	#      than HEAD
+	if (index($modifiers, 'x') != -1) {
+		$mode |= 0111;
+	}
+	if (index($modifiers, 'w') != -1) {
+		$mode |= 0200;
+	}
+
+	# XXX: assume that anything not a symlink is a regular file.
+	if ($filetype eq 'symlink') {
+		$type = 'l';
+	} else {
+		$type = 'f';
+	}
+
+	return ($type, $mode);
+}
+
+
+#####################################################################
+#
+# Start here.
+#
+#####################################################################
+
+my $depotpkgpath = $depotpath . $package . '/';
+
+my $at = '';
+$at = '@' . $opt->get('r') if (defined($opt->get('r')));
+
+vprint "building package from p4 path: $depotpkgpath...$at";
+
+
+# Get all files + metadata under this path
+vprint "reading metadata from p4...";
+my $p4_files_md = get_all_p4_file_metadata($depotpkgpath, $at);
+
+
+my $tempdir;
+if($opt->get('c')) {
+    $tempdir = $opt->get('c');
+} else {
+    $tempdir = tempdir(CLEANUP => 1);
+}
+
+my $newest = 0;
+
+
+# Set umask to sane default.
+umask(022);
+
+vprint "downloading files from p4...";
+
+my $hasfiles;
+foreach my $f (keys %$p4_files_md) {
+    my $md = $p4_files_md->{$f};
+
+    # Collect the newest change, out of all entries in the depot (even
+    # deletions, etc)
+    $newest = $md->{headChange} if ($md->{headChange} > $newest);
+
+    # Ignore anything for which the last action was 'delete'.  Everything else
+    # ('add', 'edit', 'branch', 'integrate') should mean there is still a file
+    # present at this path.
+    if ($md->{headAction} eq 'delete') {
+	next;
+    }
+
+    $hasfiles++;
+
+    # strip off the depot path to get the file name
+    if (substr($f, 0, length($depotpkgpath)) ne $depotpkgpath) {
+	die "invalid filename in depot: $f";
+    }
+    my $file = substr($f, length($depotpkgpath));
+    my $dest = $tempdir . '/' . $package . '/' . $file;
+
+    my ($type, $mode) = parse_p4_filetype($md->{headType});
+
+    # 'p4 print -o' will recreate all objects properly, even symlinks.
+    # XXX: It's actually buggy for symlinks, if the link text contains a
+    #      newline.  We will ignore this case.
+    # It also will chmod() files to what it deems correct (subject to umask),
+    # so we don't need to do this outselves.
+    eval { mkpath(dirname($dest)) };
+    if ($@) {
+	die "failed to create parent directory for: $dest";
+    }
+
+    # If revision specified via -a, use that version.
+    system('p4', 'print', '-q', '-o', $dest, $f . $at) == 0
+	or die "failed to run: p4 print $f$at";
+
+    # Force mtime to repository value for all regular files
+    if($type eq 'f') {
+	utime($md->{headModTime}, $md->{headModTime}, $dest)
+	    or die "failed to set utime for: $dest";
+    }
+}
+
+die "No files to build\n" unless($hasfiles);
+
+
+# metadata trace for checkout operation
+my $checkout_action = {
+    'actor' => whoami(),
+    'time' => time(),
+    'type' => 'build',
+    'actions' => [
+        {
+            'summary' => 'p4-multipkg checkout source from p4',
+            'text' => "depot path : $depotpkgpath...$at\n" .
+                      "files found : " . scalar(keys %$p4_files_md) . "\n",
+        },
+    ],
+};
+
+
+# get full change descriptions and write out metadata file
+my $metadir = "$tempdir/$package/meta";
+my $metafile = "$metadir/50p4-multipkg.yaml";
+die "metadata file already exists: $metafile" if (-e $metafile);
+
+
+vprint "listing all p4 changelists...";
+my @p4_changes = get_all_p4_changes($at, keys %$p4_files_md);
+
+vprint "downloading changelist metadata...";
+my $p4_changes_md = get_all_p4_change_descriptions(@p4_changes);
+
+vprint "building actionlog metadata from p4 history...";
+
+# assume that ascending numerical order is chronological order
+for my $c (sort {$a <=> $b} keys %$p4_changes_md) {
+	my $change_action = {
+	    'actor' => $p4_changes_md->{$c}->{'user'},
+	    'time' => $p4_changes_md->{$c}->{'timestamp'},
+	    'type' => 'source',
+	    'actions' => [
+	        {
+	            'summary' => "Perforce change $c",
+	            'text' => $p4_changes_md->{$c}->{'description'},
+	        },
+	    ],
+	};
+
+	push @actions, $change_action;
+}
+
+
+# generate final metadata structure
+my $metadata = {
+    'actionlog' => [ @actions, $init_action, $checkout_action ],
+};
+
+# serialize it
+vprint "writing metadata file...";
+eval { mkpath($metadir) };
+if ($@) {
+	die "can't create multipkg metadata dir: $metadir";
+}
+
+YAML::Syck::DumpFile($metafile, $metadata)
+	or die "can't create metadata file: $metafile";
+
+unless($opt->get('c')) {
+    vprint "running multipkg...";
+
+    my @plat = ();
+    @plat = ('-p', $opt->get('p'))
+        if (defined($opt->get('p')));
+
+    system('multipkg', @plat, '-s', $override_vars . "release=$newest,srcurl=p4:$depotpkgpath...$at", "$tempdir/$package") == 0
+        or die "failed to run multipkg";
+}
+
+# generate identifying string for this host/user
+sub whoami {
+    my $name;
+    eval {
+        require Sys::Hostname;
+        
+        my $user = getpwuid($<);
+        $user = 'unknown' unless (defined($user));
+        
+        $name = $user . '@' . Sys::Hostname->hostname();
+    };
+    $name = 'unknown' if ($@);
+
+    return $name;
+}

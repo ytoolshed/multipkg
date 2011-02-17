@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Tag files with PKGVERID
+[ -d "$INSTALLDIR" ] || exit 1
+[ -n "$PKGVERID" ] || exit 1
+
+find "$INSTALLDIR" -type f | {
+    while read x; do
+        grep -q __MULTIPKG_BUILD_VERSION__ "$x" || continue
+        sed -i "s,__MULTIPKG_BUILD_VERSION__,$PKGVERID," "$x"
+    done
+}
+
+exit 0

@@ -1,0 +1,24 @@
+#!/bin/sh
+
+if [ "$PERL" = "" ]; then
+    PERL=/usr/bin/perl
+fi
+if [ "$PREFIX" = "" ]; then
+    CONFIGDIR="/usr/share/multipkg"
+else
+    CONFIGDIR="${PREFIX}/share/multipkg"
+fi
+
+if [ -f Makefile.PL ]; then
+    $PERL Makefile.PL
+    make CONFIGDIR="$CONFIGDIR" || exit 1
+    make test || exit 1
+    make install DESTDIR=$DESTDIR || exit 1
+    find $DESTDIR -name perllocal.pod -type f -exec rm {} \;
+else
+    ./configure --prefix=$PREFIX || exit 1
+    make CONFIGDIR="$CONFIGDIR" || exit 1
+    make install DESTDIR=$DESTDIR INSTALLROOT=$DESTDIR || exit 1
+    rm -f $DESTDIR/usr/local/info/dir
+fi
+
