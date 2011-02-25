@@ -1,0 +1,10 @@
+---
+default:
+  build: '1'
+  name: daemontools
+  release: '1'
+  summary: A collection of tools for managing UNIX services.
+  version: '0.76'
+x86_64:
+ nobuild: 1
+ preferarch: i386

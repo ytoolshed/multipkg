@@ -1,0 +1,7 @@
+#!/bin/sh
+
+sh package/compile
+
+mkdir -p $DESTDIR/usr/local/bin
+install -m755 -oroot command/* $DESTDIR/usr/local/bin
+
