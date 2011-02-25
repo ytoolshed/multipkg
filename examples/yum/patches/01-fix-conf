@@ -1,0 +1,10 @@
+--- yum-2.4.0/etc/Makefile	2005-03-27 22:30:17.000000000 -0800
++++ yum-2.4.0-noconf/etc/Makefile	2006-10-19 18:17:23.000000000 -0700
+@@ -12,7 +12,6 @@ install:
+ 	#install -m 644 yum.pam $(DESTDIR)/etc/pam.d/yum
+ 
+ 	mkdir -p $(DESTDIR)/etc/yum.repos.d
+-	install -m 644 yum.conf $(DESTDIR)/etc/yum.conf
+ 
+ 	mkdir -p $(DESTDIR)/etc/cron.daily
+ 	install -m 755 yum.cron $(DESTDIR)/etc/cron.daily/yum.cron

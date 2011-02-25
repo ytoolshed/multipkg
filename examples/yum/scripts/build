@@ -1,0 +1,4 @@
+#!/bin/sh
+make || exit 1
+make install DESTDIR=$DESTDIR || exit 1
+rm -f $DESTDIR/usr/local/info/dir

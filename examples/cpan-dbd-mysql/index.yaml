@@ -1,0 +1,10 @@
+default:
+  name: cpan-dbd-mysql
+  cpan-module: DBD::mysql
+  preferach: i386
+  perl: /usr/local/bin/perl
+  env:
+    PERLTEST=no
+    PERLINSTALL: INSTALLDIRS=perl
+
+# cpan-module will fetch directly from CPAN

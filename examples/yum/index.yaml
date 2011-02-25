@@ -1,0 +1,14 @@
+default:
+  arch: noarch
+  name: yum
+  version: '2.4.0'
+  summary: 'yellowdog updater, modified'
+  requires:
+    - python
+    - python-sqlite
+    - python-urlgrabber
+    - python-celementtree
+
+# supply yum-2.4.0.tar.gz in this directory
+# from http://yum.baseurl.org/download/2.4/yum-2.4.0.tar.gz, md5sum c19a471ef5f72ddca3f100a60a07d1b3
+
