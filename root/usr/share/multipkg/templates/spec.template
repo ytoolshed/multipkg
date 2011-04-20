@@ -1,0 +1,13 @@
+Summary: %summary%
+Name: %name%
+Version: %version%
+Release: 1
+License: %license%
+Group: Local
+BuildRoot: %rootdir%
+Provides: %name% %provides%
+Packager: %whoami%
+
+%description
+%summary%
+
