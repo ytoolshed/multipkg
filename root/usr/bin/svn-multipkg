@@ -53,12 +53,12 @@ my %o = (
 );
 
 my %opt = ( 
-    'c|changelog ' => 'include changelog',
-    'm|mtime '     => 'set mtime on files from last revision',
+    'c|changelog'  => 'include changelog',
+    'm|mtime'      => 'set mtime on files from last revision',
     'b|baseuri=s'  => 'base URI for SVN repo',
     'r|rev=s'      => 'revision to checkout',
-    'k|keep '      => 'keep the temporary directory',
-    'v|verbose '   => 'verbose',
+    'k|keep'       => 'keep the temporary directory',
+    'v|verbose'    => 'verbose',
     'p|platform=s' => 'platform',
     's|set=s'      => 'List of variables to set',
  );
