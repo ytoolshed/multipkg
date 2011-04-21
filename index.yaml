@@ -7,7 +7,6 @@ default:
     requires:
         - perl-seco-class
         - perl-seco-cpan
-        - perl-seco-getopt
         - cpan-file-fnmatch
         - cpan-yaml-syck
         - subversion-perl
