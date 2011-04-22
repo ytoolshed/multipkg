@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 # Copyright (c) 2011 Yahoo! Inc. All rights reserved.
 
-
 use strict;
 use warnings FATAL => qw/uninitialized/;
 
@@ -17,20 +16,21 @@ use HTTP::Date;
 # metadata tracing
 my @actions;
 my $init_action = {
-    'actor' => whoami(),
-    'time' => time(),
-    'type' => 'build',
-    'actions' => [
-        {
-            'summary' => 'svn-multipkg initialiation',
-            'text' => "svn-multipkg version: " . MULTIPKG_VERSION . "\n" .
-                      "invoked as: $0 " . join(' ', @ARGV) . "\n",
-        },
-    ],
+  'actor'   => whoami(),
+  'time'    => time(),
+  'type'    => 'build',
+  'actions' => [
+    { 'summary' => 'svn-multipkg initialiation',
+      'text'    => "svn-multipkg version: "
+        . MULTIPKG_VERSION . "\n"
+        . "invoked as: $0 "
+        . join( ' ', @ARGV ) . "\n",
+    },
+  ],
 };
 
 sub usage() {
-   print <<EOF;
+  print <<EOF;
    Usage: $0 [options] <package>
    Options:
     -c, changelog      include changelog
@@ -42,49 +42,52 @@ sub usage() {
     -p, platform=s     platform
     -s, set=s          List of variables to set
 EOF
-    exit(0);
+  exit(0);
 }
 
-my %o = (
-    'b' => 'svn+ssh://svn.corp.yahoo.com/yahoo/ysm/m10n-prod-eng/trunk/packages',
-    'r' => 'HEAD',
-    'c' => 1,
-    'm' => 1,
+my $opt = {
+  'b' => '',
+  'r' => 'HEAD',
+  'c' => 1,
+  'm' => 1,
+};
+
+my %getoptions = (
+  'c|changelog'  => 'include changelog',
+  'm|mtime'      => 'set mtime on files from last revision',
+  'b|baseuri=s'  => 'base URI for SVN repo',
+  'r|rev=s'      => 'revision to checkout',
+  'k|keep'       => 'keep the temporary directory',
+  'v|verbose'    => 'verbose',
+  'p|platform=s' => 'platform',
+  's|set=s'      => 'List of variables to set',
 );
 
-my %opt = ( 
-    'c|changelog'  => 'include changelog',
-    'm|mtime'      => 'set mtime on files from last revision',
-    'b|baseuri=s'  => 'base URI for SVN repo',
-    'r|rev=s'      => 'revision to checkout',
-    'k|keep'       => 'keep the temporary directory',
-    'v|verbose'    => 'verbose',
-    'p|platform=s' => 'platform',
-    's|set=s'      => 'List of variables to set',
- );
-    
-usage() unless GetOptions(\%o, keys %opt);
-usage() if($o{h});
+usage() unless GetOptions( $opt, keys %getoptions );
+usage() if ( $opt->{h} );
 
 my $package = shift || usage();
-my $url     = $o{'b'} . '/' . $package;
-my $verbose = $o{'v'};
-my $wantrev = $o{'r'};
+my $url     = $opt->{b} . '/' . $package;
+my $verbose = $opt->{v};
+my $wantrev = $opt->{r};
 my $ctx     = SVN::Client::->new;
-my $tmp     = File::Temp::tempdir( CLEANUP => (!defined($o{'k'})) );
+my $tmp     = File::Temp::tempdir( CLEANUP => ( !defined( $opt->{k} ) ) );
 my $srcdir  = "$tmp/src";
 my $build   = "$tmp/build";
 my $rev;
 
 # options to pass through to multipkg
-my @multipkg_opts = map { ("-$_") } grep { $o{$_} } (qw/k v/);
+my @multipkg_opts = map { ("-$_") } grep { $opt->{$_} } (qw/k v/);
 
 info("get last change revision $url @ $wantrev");
-$ctx->info( $url, undef, $wantrev,
-            sub {
-                my ( $path, $info ) = @_;
-                $rev = $info->last_changed_rev;
-            }, 0 );
+$ctx->info(
+  $url, undef, $wantrev,
+  sub {
+    my ( $path, $info ) = @_;
+    $rev = $info->last_changed_rev;
+  },
+  0
+);
 info("wanted revision $wantrev, got revision $rev");
 
 info("checkout $url @ $rev to $srcdir");
@@ -93,85 +96,81 @@ $ctx->checkout( $url, $srcdir, $rev, 1 );
 info("export $srcdir to $build");
 $ctx->export( $srcdir, $build, undef, 1 );
 
-if ( $o{'m'} ) {
-    info("ls $url @ $rev");
-    my $nodes = $ctx->ls( $url, $rev, 1 );
-    
-    for (keys %$nodes) {
-        next unless ($nodes->{$_}->kind == $SVN::Node::file);
-        # XXX: because there is no lutimes(), skip symlinks
-        lstat("$build/$_") or die "can't lstat file from svn export: $build/$_";
-        next if (-l _);
-        
-        my $mtime = int($nodes->{$_}->time / 1000000);
-        utime($mtime, $mtime, "$build/$_")
-            or die "could not set mtime on file: $_";
-    }
+if ( $opt->{m} ) {
+  info("ls $url @ $rev");
+  my $nodes = $ctx->ls( $url, $rev, 1 );
+
+  for ( keys %$nodes ) {
+    next unless ( $nodes->{$_}->kind == $SVN::Node::file );
+    # XXX: because there is no lutimes(), skip symlinks
+    lstat("$build/$_") or die "can't lstat file from svn export: $build/$_";
+    next if ( -l _ );
+
+    my $mtime = int( $nodes->{$_}->time / 1000000 );
+    utime( $mtime, $mtime, "$build/$_" )
+      or die "could not set mtime on file: $_";
+  }
 }
 
 # metadata trace for checkout operation
 my $checkout_action = {
-    'actor' => whoami(),
-    'time' => time(),
-    'type' => 'build',
-    'actions' => [
-        {
-            'summary' => 'svn-multipkg checkout source from svn',
-            'text' => "url : $url\n" .
-                      "revision : $rev\n",
-        },
-    ],
+  'actor'   => whoami(),
+  'time'    => time(),
+  'type'    => 'build',
+  'actions' => [
+    { 'summary' => 'svn-multipkg checkout source from svn',
+      'text'    => "url : $url\n" . "revision : $rev\n",
+    },
+  ],
 };
 
-if ( $o{'c'} ) {
-    info("generating action log from revision history");
-    $ctx->log(
-              $url, $rev, 0, 0, 0,
-              sub {
-                  my ( $changed_paths, $revision, $author, $date, $message ) = @_;
-                  my $time = str2time $date;
-                  my $change_action = {
-                      'actor' => $author,
-                      'time' => $time,
-                      'type' => 'source',
-                      'actions' => [
-                          {
-                              'summary' => "SVN revision $revision",
-                              'text' => $message,
-                          },
-                      ],
-                  };
-                  # XXX: svn returns log in reverse chronological order
-                  unshift @actions, $change_action;
-              },
-             );
-    
-    die "no revision history" unless (@actions);
+if ( $opt->{c} ) {
+  info("generating action log from revision history");
+  $ctx->log(
+    $url, $rev, 0, 0, 0,
+    sub {
+      my ( $changed_paths, $revision, $author, $date, $message ) = @_;
+      my $time          = str2time $date;
+      my $change_action = {
+        'actor'   => $author,
+        'time'    => $time,
+        'type'    => 'source',
+        'actions' => [
+          { 'summary' => "SVN revision $revision",
+            'text'    => $message,
+          },
+        ],
+      };
+      # XXX: svn returns log in reverse chronological order
+      unshift @actions, $change_action;
+    },
+  );
+
+  die "no revision history" unless (@actions);
 }
 
 # write out metadata
 mkpath("$build/meta");
 my $metafile = "$build/meta/51svn-multipkg.yaml";
-die "metadata file already exists: $metafile" if (-e $metafile);
+die "metadata file already exists: $metafile" if ( -e $metafile );
 
-my $metadata = {
-    'actionlog' => [ @actions, $init_action, $checkout_action ],
-};
+my $metadata = { 'actionlog' => [ @actions, $init_action, $checkout_action ], };
 
 info("writing metadata");
-YAML::Syck::DumpFile($metafile, $metadata);
+YAML::Syck::DumpFile( $metafile, $metadata );
 
 info("invoking multipkg");
 
-my $platform = $o{'p'};
-my @plat = ();
-@plat = ('-p', $platform) if(defined $platform);
+my $platform = $opt->{p};
+my @plat     = ();
+@plat = ( '-p', $platform ) if ( defined $platform );
 my $override_vars = '';
-if (defined($o{'s'})) {
-    $override_vars = $o{'s'} . ',';
+if ( defined( $opt->{s} ) ) {
+  $override_vars = $opt->{s} . ',';
 }
 $ENV{'SRCZIP'} = 'svn';
-system( 'multipkg', @plat, @multipkg_opts, '-s', $override_vars . "release=$rev,srcurl=$url,srcdir=$srcdir", $build ) == 0
+system( 'multipkg', @plat, @multipkg_opts, '-s',
+  $override_vars . "release=$rev,srcurl=$url,srcdir=$srcdir", $build ) == 0
   or die "fatal: multipkg died :|";
 
 sub info { print "info: @_ \n" if ($verbose); }
@@ -179,17 +178,18 @@ sub fatal { print "fatal: @_ \n"; exit 111; }
 
 # generate identifying string for this host/user
 sub whoami {
-    my $name;
-    eval {
-        require Sys::Hostname;
-        
-        my $user = getpwuid($<);
-        $user = 'unknown' unless (defined($user));
-        
-        $name = $user . '@' . Sys::Hostname->hostname();
-    };
-    $name = 'unknown' if ($@);
-    
-    return $name;
+  my $name;
+  eval {
+    require Sys::Hostname;
+
+    my $user = getpwuid($<);
+    $user = 'unknown' unless ( defined($user) );
+
+    $name = $user . '@' . Sys::Hostname->hostname();
+  };
+  $name = 'unknown' if ($@);
+
+  return $name;
 }
+
 __END__
