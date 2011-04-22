@@ -46,13 +46,13 @@ EOF
 }
 
 my %o = (
-    'b' => 'svn+ssh://svn.corp.yahoo.com/yahoo/ysm/m10n-prod-eng/trunk/packages',
+    'b' => '',
     'r' => 'HEAD',
     'c' => 1,
     'm' => 1,
 );
 
-my %opt = ( 
+my %opt = (
     'c|changelog'  => 'include changelog',
     'm|mtime'      => 'set mtime on files from last revision',
     'b|baseuri=s'  => 'base URI for SVN repo',
@@ -62,7 +62,7 @@ my %opt = (
     'p|platform=s' => 'platform',
     's|set=s'      => 'List of variables to set',
  );
-    
+
 usage() unless GetOptions(\%o, keys %opt);
 usage() if($o{h});
 
@@ -96,13 +96,13 @@ $ctx->export( $srcdir, $build, undef, 1 );
 if ( $o{'m'} ) {
     info("ls $url @ $rev");
     my $nodes = $ctx->ls( $url, $rev, 1 );
-    
+
     for (keys %$nodes) {
         next unless ($nodes->{$_}->kind == $SVN::Node::file);
         # XXX: because there is no lutimes(), skip symlinks
         lstat("$build/$_") or die "can't lstat file from svn export: $build/$_";
         next if (-l _);
-        
+
         my $mtime = int($nodes->{$_}->time / 1000000);
         utime($mtime, $mtime, "$build/$_")
             or die "could not set mtime on file: $_";
@@ -182,7 +182,7 @@ sub whoami {
     my $name;
     eval {
         require Sys::Hostname;
-        
+
         my $user = getpwuid($<);
         $user = 'unknown' unless (defined($user));
         
