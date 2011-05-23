@@ -1,13 +1,24 @@
 Summary: %summary%
 Name: %name%
 Version: %version%
-Release: 1
+Release: %release%
 License: %license%
 Group: Local
-BuildRoot: %rootdir%
 Provides: %name% %provides%
 Packager: %whoami%
+BuildRoot: %buildroot
+BuildArch: %arch%
 
 %description
 %summary%
+
+%%ifscript(post.sh)
+%post
+%%post.sh%%
+%%endif
+
+%%ifscript(preun.sh)
+%preun
+%%preun.sh%%
+%%endif
 
