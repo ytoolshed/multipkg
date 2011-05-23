@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/perl -w
 # Copyright (c) 2011 Yahoo! Inc. All rights reserved.
 
 use strict;
