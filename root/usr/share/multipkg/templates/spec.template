@@ -8,6 +8,8 @@ Provides: %name% %provides%
 Packager: %whoami%
 BuildRoot: %buildroot
 BuildArch: %arch%
+autoreqprov: no
+Requires: %requirelist%
 
 %description
 %summary%
