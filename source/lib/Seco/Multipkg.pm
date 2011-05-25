@@ -796,12 +796,13 @@ sub makepackage {
     $self->tmpdir . "/spec" );
   # return $self->error("Can't run: $@") if($@);
 
-  my $rpmline = pop @ten;
-  if ( $rpmline =~ /Wrote: (.*\.rpm)/ ) {
-    $rpm = $1;
+  for my $rpmline (@ten) {
+    if ( $rpmline =~ /Wrote: (.*\.rpm)/ ) {
+        $rpm = $1;
+    }
   }
-  else {
-    return $self->error("Can't find rpm in $rpmline");
+  unless ($rpm) {
+    return $self->error("Can't find rpm name");
   }
 
   my $myrpm = File::Basename::basename $rpm;
