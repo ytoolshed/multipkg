@@ -4,12 +4,14 @@ Version: %version%
 Release: %release%
 License: %license%
 Group: Local
-Provides: %name% %provides%
+Provides: %name% %providelist%
 Packager: %whoami%
 BuildRoot: %buildroot
 BuildArch: %arch%
 autoreqprov: no
 Requires: %requirelist%
+Conflicts: %conflictlist%
+Obsoletes: %obsoletelist%
 
 %description
 %summary%
