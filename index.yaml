@@ -4,6 +4,10 @@ default:
     version: '1.2'
     summary: Automation for package builds (supports RPM, deb)
     buildprefix: /usr
+    provides:
+        - Seco::Multipkg
+        - perl-seco-class
+        - perl-seco-cpan
     requires:
         - perl-seco-class
         - perl-seco-cpan
