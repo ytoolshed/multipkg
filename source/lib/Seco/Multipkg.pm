@@ -792,7 +792,7 @@ sub makepackage {
   # FATAL ON ERRORS
   @ten = $self->runcmd(
     "INSTALLROOT=" . $self->installdir . 
-    " rpmbuild -bb --define '_topdir " .  $self->tmpdir . 
+    " rpmbuild -bb --define '_topdir " .  $self->tmpdir . "/rpm/rpmtop" .
     "' --buildroot " . $self->installdir . " " .
     $self->tmpdir . "/spec" );
   # return $self->error("Can't run: $@") if($@);
