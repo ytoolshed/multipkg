@@ -575,10 +575,12 @@ sub transform {
     }
   }
 
-  $self->runcmd( "INSTALLDIR=$installdir "
-      . "PKGVERID="
-      . $self->pkgverid . " "
-      . $self->info->scripts->{transform} );
+  if($self->info->scripts->{transform}) {
+    $self->runcmd( "INSTALLDIR=$installdir "
+        . "PKGVERID="
+        . $self->pkgverid . " "
+        . $self->info->scripts->{transform} );
+  }
 }
 
 sub copyroot {
