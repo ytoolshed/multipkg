@@ -376,6 +376,7 @@ sub runcmd {
 sub build {
   my $self = shift;
 
+  chdir $self->info->directory;
   my $realbuild = $self->builddir;
 
   chdir($self->{info}->directory);
