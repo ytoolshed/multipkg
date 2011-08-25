@@ -379,8 +379,6 @@ sub build {
   chdir $self->info->directory;
   my $realbuild = $self->builddir;
 
-  chdir($self->{info}->directory);
-
   # check for cpan-module
   if ( my $module = $self->info->data->{'cpan-module'} ) {
     eval { require Seco::CPAN; };
