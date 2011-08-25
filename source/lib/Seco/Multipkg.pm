@@ -436,9 +436,9 @@ sub build {
     return;
   }
 
-  my $prefix  = $self->info->data->{buildprefix};
   my $destdir = $self->installdir;
-  my $perl    = $self->info->data->{perl};
+  my $prefix  = $self->info->data->{buildprefix}?$self->info->data->{buildprefix}:"/usr";
+  my $perl    = $self->info->data->{perl}?$self->info->data->{perl}:"/usr/bin/perl";
 
   chdir $realbuild;
   $self->{_vars}{BUILDDIR} = $realbuild;
