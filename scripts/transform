@@ -4,11 +4,9 @@
 [ -d "$INSTALLDIR" ] || exit 1
 [ -n "$PKGVERID" ] || exit 1
 
-find "$INSTALLDIR" -type f | {
-    while read x; do
-        grep -q __MULTIPKG_BUILD_VERSION__ "$x" || continue
-        sed -i "s,__MULTIPKG_BUILD_VERSION__,$PKGVERID," "$x"
-    done
-}
+for x in `find "$INSTALLDIR" -type f`; do
+    grep -q __MULTIPKG_BUILD_VERSION__ "$x" && sed -i "s,__MULTIPKG_BUILD_VERSION__,$PKGVERID," "$x"
+    grep -q __MULTIPKG_CONFIG_DIR__  "$x" && sed -i "s,__MULTIPKG_CONFIG_DIR__,$CONFIGDIR," "$x"
+done
 
 exit 0
