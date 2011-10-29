@@ -43,8 +43,10 @@ sub clone {
 sub pkg {
     my ($opts, $pkg, $srcdir, $build) = @_;
     info("Invoking multipkg on $srcdir");
+    # options to pass through to multipkg
+    my @multipkg_opts = map { ("-$_") } grep { $opts->{$_} } (qw/k v/);
     my $vars = "release=0.01,srcurl=$opts->{b},srcdir=$srcdir";
-    system("multipkg", '-s', $vars, $build);
+    system("multipkg", '-s', $vars, @multipkg_opts, $build);
 }
 
 sub archive {
