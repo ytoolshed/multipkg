@@ -6,7 +6,7 @@
 
 for x in `find "$INSTALLDIR" -type f`; do
     grep -q __MULTIPKG_BUILD_VERSION__ "$x" && sed -i "s,__MULTIPKG_BUILD_VERSION__,$PKGVERID," "$x"
-    grep -q __MULTIPKG_CONFIG_DIR__  "$x" && sed -i "s,__MULTIPKG_CONFIG_DIR__,/usr/share/multipkg/templates," "$x"
+    grep -q __MULTIPKG_CONFIG_DIR__  "$x" && sed -i "s,__MULTIPKG_CONFIG_DIR__,/usr/share/multipkg," "$x"
 done
 
 exit 0
