@@ -216,7 +216,7 @@ sub template_string {
   my $self = shift;
   my $from = shift;
 
-  open my $f, "<$from";
+  open my $f, "<$from" or die "$from: $!";
   my $ret = '';
 
   my $skipping = 0;
@@ -729,7 +729,8 @@ sub makepackage {
 
   $self->info->data->{rpmtemprepo} = $self->tmpdir . "/rpm";
 
-  $self->template_file( $self->info->confdir . "/spec.template", $self->tmpdir . "/spec" );
+  $self->template_file( $self->info->confdir . "/templates/spec.template", 
+                        $self->tmpdir . "/spec" );
 
   open my $f, ">>" . $self->tmpdir . "/spec";
   print $f "%files\n";
