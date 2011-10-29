@@ -1,0 +1,74 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Git;
+use Data::Dumper;
+use File::Temp;
+use Getopt::Long;
+
+my $opt = {
+    'b' => '',
+    'r' => 'HEAD',
+};
+
+my %options = (
+    'b|baseurl=s' => 'base URI for the git repo',
+    'k|keep'    => 'do not delete the working directory',
+    'v|verbose' => 'verbose output',
+);
+
+usage() unless GetOptions( $opt, keys %options );
+my $package = shift;
+
+usage() if( $opt->{h} );
+usage() unless( $opt->{b} );
+usage() unless( $package );
+
+my $verbose = $opt->{v};
+
+sub usage {
+    die "incorrect usage";
+}
+
+sub info { print "info: @_ \n" if ($verbose); }
+sub fatal { print "fatal: @_ \n"; exit 111; }
+
+sub clone {
+    my ($repo, $target) = @_;
+    info("Cloning from $repo to $target");
+    my $cmd = sprintf("git clone %s %s", $repo, $target);
+    system($cmd);
+}
+
+sub pkg {
+    my ($opts, $pkg, $srcdir, $build) = @_;
+    info("Invoking multipkg on $srcdir");
+    my $vars = "release=0.01,srcurl=$opts->{b},srcdir=$srcdir";
+    system("multipkg", '-s', $vars, $build);
+}
+
+sub archive {
+    my ($src, $dest) = @_;
+    my $cwd = $ENV{PWD};
+    info("archiving $src to $dest");
+    my $cmd = "git archive --format tar HEAD | (cd $dest && tar xf -)";
+    info("Running $cmd");
+    chdir($src);
+    mkdir($dest);
+    system($cmd);
+    chdir($cwd);
+}
+
+sub main {
+    my ($opts, $pkg) = @_;
+    my $base = $opts->{b};
+    my $repo = "$base/$pkg";
+    my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
+    my $srcdir = "$dir/src";
+    my $build = "$dir/build";
+    clone($repo, $srcdir);
+    archive($srcdir, $build);
+    pkg($opts, $pkg, $srcdir, $build);
+}
+
+main($opt, $package);
