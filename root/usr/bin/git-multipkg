@@ -12,9 +12,10 @@ my $opt = {
 };
 
 my %options = (
+    'h|help'      => 'show usage information',
     'b|baseurl=s' => 'base URI for the git repo',
-    'k|keep'    => 'do not delete the working directory',
-    'v|verbose' => 'verbose output',
+    'k|keep'      => 'do not delete the working directory',
+    'v|verbose'   => 'verbose output',
 );
 
 usage() unless GetOptions( $opt, keys %options );
@@ -27,7 +28,19 @@ usage() unless( $package );
 my $verbose = $opt->{v};
 
 sub usage {
-    die "incorrect usage";
+  print <<EOF;
+   Usage: $0 [options] <package>
+   Options:
+    -c, changelog      include changelog (NOT IMPLEMENTED)
+    -m, mtime          set mtime on files from last revision (NOT IMPLEMENTED)
+    -b, baseuri=s      base URI for GIT repo
+    -r, rev=s          revision to checkout (NOT IMPLEMENTED)
+    -k, keep           keep the temporary directory
+    -v, verbose        verbose
+    -p, platform=s     platform
+    -s, set=s          List of variables to set
+EOF
+  exit(0);
 }
 
 sub info { print "info: @_ \n" if ($verbose); }
