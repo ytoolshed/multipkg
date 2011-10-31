@@ -15,8 +15,6 @@ if [ -f Makefile.PL ]; then
     make test || exit 1
     make install DESTDIR=$DESTDIR || exit 1
     find $DESTDIR -name perllocal.pod -type f -exec rm {} \;
-elif [ -f setup.py ]; then
-    python setup.py install --root $DESTDIR
 else
     ./configure --prefix=$PREFIX || exit 1
     make CONFIGDIR="$CONFIGDIR" || exit 1
