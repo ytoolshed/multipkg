@@ -216,7 +216,7 @@ sub template_string {
   my $self = shift;
   my $from = shift;
 
-  open my $f, "<$from";
+  open my $f, "<$from" or die "$from: $!";
   my $ret = '';
 
   my $skipping = 0;
@@ -376,6 +376,7 @@ sub runcmd {
 sub build {
   my $self = shift;
 
+  chdir $self->info->directory;
   my $realbuild = $self->builddir;
 
   # check for cpan-module
@@ -435,9 +436,9 @@ sub build {
     return;
   }
 
-  my $prefix  = $self->info->data->{buildprefix};
   my $destdir = $self->installdir;
-  my $perl    = $self->info->data->{perl};
+  my $prefix  = $self->info->data->{buildprefix}?$self->info->data->{buildprefix}:"/usr";
+  my $perl    = $self->info->data->{perl}?$self->info->data->{perl}:"/usr/bin/perl";
 
   chdir $realbuild;
   $self->{_vars}{BUILDDIR} = $realbuild;
@@ -574,10 +575,12 @@ sub transform {
     }
   }
 
-  $self->runcmd( "INSTALLDIR=$installdir "
-      . "PKGVERID="
-      . $self->pkgverid . " "
-      . $self->info->scripts->{transform} );
+  if($self->info->scripts->{transform}) {
+    $self->runcmd( "INSTALLDIR=$installdir "
+        . "PKGVERID="
+        . $self->pkgverid . " "
+        . $self->info->scripts->{transform} );
+  }
 }
 
 sub copyroot {
@@ -726,7 +729,8 @@ sub makepackage {
 
   $self->info->data->{rpmtemprepo} = $self->tmpdir . "/rpm";
 
-  $self->template_file( $self->info->confdir . "/spec.template", $self->tmpdir . "/spec" );
+  $self->template_file( $self->info->confdir . "/templates/spec.template", 
+                        $self->tmpdir . "/spec" );
 
   open my $f, ">>" . $self->tmpdir . "/spec";
   print $f "%files\n";
@@ -790,15 +794,19 @@ sub makepackage {
   my @ten;
   # FATAL ON ERRORS
   @ten = $self->runcmd(
-    "INSTALLROOT=" . $self->installdir . " rpmbuild -bb " . $self->tmpdir . "/spec" );
+    "INSTALLROOT=" . $self->installdir . 
+    " rpmbuild -bb --define '_topdir " .  $self->tmpdir . "/rpm/rpmtop" .
+    "' --buildroot " . $self->installdir . " " .
+    $self->tmpdir . "/spec" );
   # return $self->error("Can't run: $@") if($@);
 
-  my $rpmline = pop @ten;
-  if ( $rpmline =~ /Wrote: (.*\.rpm)/ ) {
-    $rpm = $1;
+  for my $rpmline (@ten) {
+    if ( $rpmline =~ /Wrote: (.*\.rpm)/ ) {
+        $rpm = $1;
+    }
   }
-  else {
-    return $self->error("Can't find rpm in $rpmline");
+  unless ($rpm) {
+    return $self->error("Can't find rpm name");
   }
 
   my $myrpm = File::Basename::basename $rpm;
