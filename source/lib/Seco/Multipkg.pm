@@ -462,8 +462,9 @@ sub build {
 
   # FATAL ON ERRORS
   $self->runcmd( "PERL=$perl INSTALLROOT=$destdir DESTDIR=$destdir "
-      . "PREFIX=$prefix PKGVERID="
+      . "PREFIX=$prefix PKGVERID=" 
       . $self->pkgverid . " "
+      . "PACKAGEVERSION=" . $self->info->data->{version} . " "
       . $self->info->scripts->{build} );
   # return $self->error("Error running: $@") if($@);
 
