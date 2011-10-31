@@ -61,7 +61,8 @@ sub fatal { print "fatal: @_ \n"; exit 111; }
 sub clone {
     my ($repo, $target, $opts) = @_;
     info("Cloning from $repo to $target");
-    Git::command('clone', '-b', $opts->{B}, $repo, $target);
+    my $out = Git::command('clone', '-b', $opts->{B}, $repo, $target);
+    info($out);
 }
 
 # Call multipkg
