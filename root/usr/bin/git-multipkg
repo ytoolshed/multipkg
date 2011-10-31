@@ -12,7 +12,6 @@ use Git;
 use Data::Dumper;
 use File::Temp;
 use Getopt::Long;
-use Error qw(:try);
 
 my $opt = {
     'b' => '',
@@ -62,21 +61,16 @@ sub fatal { print "fatal: @_ \n"; exit 111; }
 sub clone {
     my ($repo, $target, $opts) = @_;
     info("Cloning from $repo to $target");
-    try {
-	Git::command('clone', '-b', $opts->{B}, $repo, $target);
-    }
-    catch Git::Error::Command with {
-	die
-    };
+    Git::command('clone', '-b', $opts->{B}, $repo, $target);
 }
 
 # Call multipkg
 sub pkg {
-    my ($opts, $pkg, $srcdir, $build) = @_;
+    my ($opts, $pkg, $srcdir, $build, $ts) = @_;
     info("Invoking multipkg on $srcdir");
     # options to pass through to multipkg
     my @multipkg_opts = map { ("-$_") } grep { $opts->{$_} } (qw/k v/);
-    my $vars = "release=0.01,srcurl=$opts->{b},srcdir=$srcdir";
+    my $vars = "release=$ts,srcurl=$opts->{b},srcdir=$srcdir";
     system("multipkg", '-s', $vars, @multipkg_opts, $build);
 }
 
@@ -93,6 +87,18 @@ sub archive {
     chdir($cwd);
 }
 
+sub get_timestamp {
+    my ($dir, $rev) = @_;
+    my $ts = 0;
+    my $oldPWD = $ENV{PWD};
+    info("Gathering revision timestamp information for $dir\@$rev");
+    chdir($dir) or die;
+    $ts = Git::command_oneline('log', '-1', '--pretty=format:%ct', $rev);
+    chdir($oldPWD);
+    die "Did not get a meaningful timestamp for $dir at $rev\n" unless($ts > 0);
+    return $ts;
+}
+
 sub main {
     my ($opts, $pkg) = @_;
     my $base = $opts->{b};
@@ -102,7 +108,8 @@ sub main {
     my $build = "$dir/build";
     clone($repo, $srcdir, $opts);
     archive($srcdir, $build, $opts);
-    pkg($opts, $pkg, $srcdir, $build);
+    my $ts = get_timestamp($repo, $opts->{r});
+    pkg($opts, $pkg, $srcdir, $build, $ts);
 }
 
 main($opt, $package);
