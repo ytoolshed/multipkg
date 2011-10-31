@@ -58,11 +58,10 @@ EOF
 sub info { print "info: @_ \n" if ($verbose); }
 sub fatal { print "fatal: @_ \n"; exit 111; }
 
+# Clone the source repository to a local directory
 sub clone {
     my ($repo, $target, $opts) = @_;
     info("Cloning from $repo to $target");
-    #my $cmd = sprintf("git clone %s %s", $repo, $target);
-    #system($cmd);
     try {
 	Git::command('clone', '-b', $opts->{B}, $repo, $target);
     }
@@ -71,6 +70,7 @@ sub clone {
     };
 }
 
+# Call multipkg
 sub pkg {
     my ($opts, $pkg, $srcdir, $build) = @_;
     info("Invoking multipkg on $srcdir");
@@ -80,6 +80,7 @@ sub pkg {
     system("multipkg", '-s', $vars, @multipkg_opts, $build);
 }
 
+# Copy the contents of the git repository to the build directory
 sub archive {
     my ($src, $dest, $opts) = @_;
     my $cwd = $ENV{PWD};
