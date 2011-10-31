@@ -5,15 +5,19 @@ use Git;
 use Data::Dumper;
 use File::Temp;
 use Getopt::Long;
+use Error qw(:try);
 
 my $opt = {
     'b' => '',
     'r' => 'HEAD',
+    'B' => 'master',
 };
 
 my %options = (
     'h|help'      => 'show usage information',
     'b|baseurl=s' => 'base URI for the git repo',
+    'N|branch=s'  => 'branch to build from',
+    'r|rev=s'     => 'revision to build (default=HEAD)',
     'k|keep'      => 'do not delete the working directory',
     'v|verbose'   => 'verbose output',
 );
@@ -35,6 +39,7 @@ sub usage {
     -m, mtime          set mtime on files from last revision (NOT IMPLEMENTED)
     -b, baseuri=s      base URI for GIT repo
     -r, rev=s          revision to checkout (NOT IMPLEMENTED)
+    -N, branch=s       branch to build from (default=master)
     -k, keep           keep the temporary directory
     -v, verbose        verbose
     -p, platform=s     platform
@@ -47,10 +52,16 @@ sub info { print "info: @_ \n" if ($verbose); }
 sub fatal { print "fatal: @_ \n"; exit 111; }
 
 sub clone {
-    my ($repo, $target) = @_;
+    my ($repo, $target, $opts) = @_;
     info("Cloning from $repo to $target");
-    my $cmd = sprintf("git clone %s %s", $repo, $target);
-    system($cmd);
+    #my $cmd = sprintf("git clone %s %s", $repo, $target);
+    #system($cmd);
+    try {
+	Git::command('clone', '-b', $opts->{B}, $repo, $target);
+    }
+    catch Git::Error::Command with {
+	die
+    };
 }
 
 sub pkg {
@@ -81,7 +92,7 @@ sub main {
     my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
     my $srcdir = "$dir/src";
     my $build = "$dir/build";
-    clone($repo, $srcdir);
+    clone($repo, $srcdir, $opts);
     archive($srcdir, $build);
     pkg($opts, $pkg, $srcdir, $build);
 }
