@@ -6,7 +6,7 @@ License: %license%
 Group: Local
 Provides: %name% %providelist%
 Packager: %whoami%
-BuildRoot: %buildroot
+BuildRoot: %buildroot%
 BuildArch: %arch%
 autoreqprov: no
 Requires: %requirelist%

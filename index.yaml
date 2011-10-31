@@ -12,6 +12,6 @@ default:
         - perl-seco-class
         - perl-seco-cpan
         - cpan-file-fnmatch
-        - cpan-yaml-syck
+        - perl-YAML-Syck
         - subversion-perl
 

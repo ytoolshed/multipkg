@@ -793,8 +793,13 @@ sub makepackage {
   my $rpm;
   my @ten;
   # FATAL ON ERRORS
+  my $setarch = '';
+  if($self->info->data->{arch} eq 'i686') {
+      $setarch = " setarch " . $self->info->data->{arch};
+  }
+
   @ten = $self->runcmd(
-    "INSTALLROOT=" . $self->installdir . 
+    "INSTALLROOT=" . $self->installdir . $setarch .
     " rpmbuild -bb --define '_topdir " .  $self->tmpdir . "/rpm/rpmtop" .
     "' --buildroot " . $self->installdir . " " .
     $self->tmpdir . "/spec" );
@@ -802,7 +807,7 @@ sub makepackage {
 
   for my $rpmline (@ten) {
     if ( $rpmline =~ /Wrote: (.*\.rpm)/ ) {
-        $rpm = $1;
+      $rpm = $1;
     }
   }
   unless ($rpm) {
