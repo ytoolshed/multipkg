@@ -9,9 +9,7 @@ default:
         - perl-seco-class
         - perl-seco-cpan
     requires:
-        - perl-seco-class
-        - perl-seco-cpan
-        - cpan-file-fnmatch
+        - perl-File-FnMatch
         - perl-YAML-Syck
         - subversion-perl
 
