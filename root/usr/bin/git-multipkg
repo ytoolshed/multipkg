@@ -38,7 +38,7 @@ sub usage {
     -c, changelog      include changelog (NOT IMPLEMENTED)
     -m, mtime          set mtime on files from last revision (NOT IMPLEMENTED)
     -b, baseuri=s      base URI for GIT repo
-    -r, rev=s          revision to checkout (NOT IMPLEMENTED)
+    -r, rev=s          revision to checkout
     -N, branch=s       branch to build from (default=master)
     -k, keep           keep the temporary directory
     -v, verbose        verbose
@@ -74,10 +74,10 @@ sub pkg {
 }
 
 sub archive {
-    my ($src, $dest) = @_;
+    my ($src, $dest, $opts) = @_;
     my $cwd = $ENV{PWD};
     info("archiving $src to $dest");
-    my $cmd = "git archive --format tar HEAD | (cd $dest && tar xf -)";
+    my $cmd = "git archive --format tar $opts->{r} | (cd $dest && tar xf -)";
     info("Running $cmd");
     chdir($src);
     mkdir($dest);
@@ -93,7 +93,7 @@ sub main {
     my $srcdir = "$dir/src";
     my $build = "$dir/build";
     clone($repo, $srcdir, $opts);
-    archive($srcdir, $build);
+    archive($srcdir, $build, $opts);
     pkg($opts, $pkg, $srcdir, $build);
 }
 
