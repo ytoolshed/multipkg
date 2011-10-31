@@ -108,7 +108,7 @@ sub main {
     my $build = "$dir/build";
     clone($repo, $srcdir, $opts);
     archive($srcdir, $build, $opts);
-    my $ts = get_timestamp($repo, $opts->{r});
+    my $ts = get_timestamp($srcdir, $opts->{r});
     pkg($opts, $pkg, $srcdir, $build, $ts);
 }
 
