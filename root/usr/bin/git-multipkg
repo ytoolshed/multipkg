@@ -140,7 +140,6 @@ sub main {
     clone($repo, $clonedir, $opts);
 
     my $srcdir = "$dir/src";
-    # TODO: support more than one-deep packages
     symlink "$clonedir/$pkgbase", $srcdir;
     archive($srcdir, $build, $opts);
     my $ts = get_timestamp($clonedir, $opts->{r});
