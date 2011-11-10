@@ -1,0 +1,5 @@
+default:
+  name: flex
+  summary: "flex: The Fast Lexical Analyzer"
+  version: '2.5.35'
+# grab flex from http://flex.sourceforge.net/ and untar it to ./source
