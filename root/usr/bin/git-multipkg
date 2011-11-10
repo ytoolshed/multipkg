@@ -39,6 +39,7 @@ my $verbose = $opt->{v};
 
 sub usage {
   print <<EOF;
+
    Usage: $0 [options] <package>
    Options:
     -c, changelog      include changelog (NOT IMPLEMENTED)
@@ -50,6 +51,10 @@ sub usage {
     -v, verbose        verbose
     -p, platform=s     platform
     -s, set=s          List of variables to set
+
+  Example:
+   git-multipkg -b https://github.com/ytoolshed/ multipkg
+
 EOF
   exit(0);
 }
