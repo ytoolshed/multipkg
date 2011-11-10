@@ -152,9 +152,6 @@ sub main {
     }
 
     # output should be a $repo and a $pkgbase
-    
-use Data::Dumper;
-print Dumper [ $path, $pkg, $pkgbase, $repo ];
 
     my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
     my $build = "$dir/build";
