@@ -127,13 +127,16 @@ sub getpkgpath {
 
 sub main {
     my ($opts, $path) = @_;
+
+    #pkgname is the same for all types of bases
     my $pkg = getpkg($path);
+
     my $repoid = getrepo($path);
     my $pkgbase = getpkgpath($path);
-
     my $base = $opts->{b};
-
     my $repo = "$base$repoid";
+
+
     my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
     my $build = "$dir/build";
     my $clonedir = "$dir/clone";
