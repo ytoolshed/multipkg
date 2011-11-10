@@ -26,6 +26,7 @@ my %options = (
     'r|rev=s'     => 'revision to build (default=HEAD)',
     'k|keep'      => 'do not delete the working directory',
     'v|verbose'   => 'verbose output',
+    'f|force'     => 'Force through multipkg errors',
 );
 
 usage() unless GetOptions( $opt, keys %options );
@@ -51,6 +52,7 @@ sub usage {
     -v, verbose        verbose
     -p, platform=s     platform
     -s, set=s          List of variables to set
+    -f, force          Force through multipkg errors
 
   Example:
    git-multipkg -b https://github.com/ytoolshed/ multipkg
@@ -75,7 +77,7 @@ sub pkg {
     my ($opts, $pkg, $srcdir, $build, $ts) = @_;
     info("Invoking multipkg on $srcdir");
     # options to pass through to multipkg
-    my @multipkg_opts = map { ("-$_") } grep { $opts->{$_} } (qw/k v/);
+    my @multipkg_opts = map { ("-$_") } grep { $opts->{$_} } (qw/k v f/);
     my $vars = "release=$ts,srcurl=$opts->{b},srcdir=$srcdir";
     system("multipkg", '-s', $vars, @multipkg_opts, $build);
 }
