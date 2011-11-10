@@ -1,0 +1,3 @@
+I should be in the package you build with:
+
+git-multipkg -b http://github.com/ytoolshed -N git-multipkg-build-from-branch-broken multipkg
