@@ -130,12 +130,29 @@ sub main {
 
     #pkgname is the same for all types of bases
     my $pkg = getpkg($path);
+    my ($pkgbase, $repo);
 
-    my $repoid = getrepo($path);
-    my $pkgbase = getpkgpath($path);
-    my $base = $opts->{b};
-    my $repo = "$base$repoid";
+    if ($opts->{b} =~ /^http/) {
+        my $repoid = getrepo($path);
+        my $base = $opts->{b};
+    
+        $repo = "$base$repoid";
+        $pkgbase = getpkgpath($path);
+    }
+    elsif ($opts->{b} =~ /\.git$/){
+        $repo = $opts->{b};
+        $pkgbase = File::Basename::dirname($path);
+        $pkgbase = $path;
+    }
+    else {
+        # -b was not provided
+        die "unsupported base";
+    }
 
+    # output should be a $repo and a $pkgbase
+    
+use Data::Dumper;
+print Dumper [ $path, $pkg, $pkgbase, $repo ];
 
     my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
     my $build = "$dir/build";
