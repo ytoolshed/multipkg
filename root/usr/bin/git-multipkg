@@ -11,6 +11,8 @@ use strict;
 use Git;
 use Data::Dumper;
 use File::Temp;
+use File::Basename;
+use File::Spec;
 use Getopt::Long;
 
 my $opt = {
@@ -54,8 +56,12 @@ sub usage {
     -s, set=s          List of variables to set
     -f, force          Force through multipkg errors
 
-  Example:
+  Examples:
    git-multipkg -b https://github.com/ytoolshed/ multipkg
+   git-multipkg -b https://github.com/ytoolshed/ range/libcrange
+
+   git-multipkg -b git\@github.com:ytoolshed/multipkg.git multipkg
+   git-multipkg -b git\@github.com:ytoolshed/range.git range/libcrange
 
 EOF
   exit(0);
@@ -107,16 +113,76 @@ sub get_timestamp {
     return $ts;
 }
 
+sub getrepo {
+    my $path = shift;
+    return [ split '/', $path ]->[0];
+}
+
+sub getpkg {
+    my $path = shift;
+    return File::Basename::basename($path);
+}
+
+sub getpkgpath {
+    my $path = shift;
+    my $repo = getrepo($path);
+  
+    my $pkgpath = $path;
+    $pkgpath =~ s{^$repo/?}{};
+    return $pkgpath;
+}
+
 sub main {
-    my ($opts, $pkg) = @_;
-    my $base = $opts->{b};
-    my $repo = "$base/$pkg";
+    my ($opts, $path) = @_;
+
+    # Prepare the package, base and repo from the provided base URI
+
+    # Package name is always the same
+    my $pkg = getpkg($path);
+
+    # $pkgbase is contrived from the base uri and package path provided
+    # $repo is fed to git clone
+    my ($pkgbase, $repo);
+
+    if ($opts->{b} =~ /^http/) {
+        # can't use File::Spec->catdir for these because it'll destory the two
+        # slashes in http://whatever.com/repo
+        my $repoid = getrepo($path);
+        $repoid =~ s{^/+}{};
+        my $base = $opts->{b};
+        $base =~ s{/+$}{};
+
+        $repo = "${base}/${repoid}";
+        $pkgbase = getpkgpath($path);
+    }
+    elsif ($opts->{b} =~ /\.git$/){
+        $repo = $opts->{b};
+
+        # if $path is just a repo name, not a full path...
+        if ( File::Basename::basename( $path ) eq $path ) {
+            $pkgbase = '';
+        }
+        else {
+            #otherwise, shave off the first part of the path
+            $pkgbase = $path;
+            $pkgbase =~ s{^[^/]+/}{};
+        }
+    }
+    else {
+        # -b was not provided 
+        # SHOULD NEVER BE REACHED
+        die "unsupported base";
+    }
+
     my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
-    my $srcdir = "$dir/src";
     my $build = "$dir/build";
-    clone($repo, $srcdir, $opts);
+    my $clonedir = "$dir/clone";
+    clone($repo, $clonedir, $opts);
+
+    my $srcdir = File::Spec->catdir($dir, 'src');
+    symlink File::Spec->catdir($clonedir, $pkgbase), $srcdir;
     archive($srcdir, $build, $opts);
-    my $ts = get_timestamp($srcdir, $opts->{r});
+    my $ts = get_timestamp($clonedir, $opts->{r});
     pkg($opts, $pkg, $srcdir, $build, $ts);
 }
 
