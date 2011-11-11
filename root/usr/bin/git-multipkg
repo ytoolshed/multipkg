@@ -12,6 +12,7 @@ use Git;
 use Data::Dumper;
 use File::Temp;
 use File::Basename;
+use File::Spec;
 use Getopt::Long;
 
 my $opt = {
@@ -137,8 +138,8 @@ sub main {
     if ($opts->{b} =~ /^http/) {
         my $repoid = getrepo($path);
         my $base = $opts->{b};
-    
-        $repo = "$base$repoid";
+
+        $repo = File::Spec->catdir($base, $repoid);
         $pkgbase = getpkgpath($path);
     }
     elsif ($opts->{b} =~ /\.git$/){
@@ -158,8 +159,8 @@ sub main {
     my $clonedir = "$dir/clone";
     clone($repo, $clonedir, $opts);
 
-    my $srcdir = "$dir/src";
-    symlink "$clonedir/$pkgbase", $srcdir;
+    my $srcdir = File::Spec->catdir($dir, 'src');
+    symlink File::Spec->catdir($clonedir, $pkgbase), $srcdir;
     archive($srcdir, $build, $opts);
     my $ts = get_timestamp($clonedir, $opts->{r});
     pkg($opts, $pkg, $srcdir, $build, $ts);
