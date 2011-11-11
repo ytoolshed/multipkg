@@ -56,8 +56,12 @@ sub usage {
     -s, set=s          List of variables to set
     -f, force          Force through multipkg errors
 
-  Example:
+  Examples:
    git-multipkg -b https://github.com/ytoolshed/ multipkg
+   git-multipkg -b https://github.com/ytoolshed/ range/libcrange
+
+   git-multipkg -b git\@github.com:ytoolshed/multipkg.git multipkg
+   git-multipkg -b git\@github.com:ytoolshed/range.git range/libcrange
 
 EOF
   exit(0);
@@ -110,29 +114,34 @@ sub get_timestamp {
 }
 
 sub getrepo {
-  my $path = shift;
-  return [ split '/', $path ]->[0];
+    my $path = shift;
+    return [ split '/', $path ]->[0];
 }
 
 sub getpkg {
-  my $path = shift;
-  return File::Basename::basename($path);
+    my $path = shift;
+    return File::Basename::basename($path);
 }
 
 sub getpkgpath {
-  my $path = shift;
-  my $repo = getrepo($path);
-
-  my $pkgpath = $path;
-  $pkgpath =~ s{^$repo/?}{};
-  return $pkgpath;
+    my $path = shift;
+    my $repo = getrepo($path);
+  
+    my $pkgpath = $path;
+    $pkgpath =~ s{^$repo/?}{};
+    return $pkgpath;
 }
 
 sub main {
     my ($opts, $path) = @_;
 
-    #pkgname is the same for all types of bases
+    # Prepare the package, base and repo from the provided base URI
+
+    # Package name is always the same
     my $pkg = getpkg($path);
+
+    # $pkgbase is contrived from the base uri and package path provided
+    # $repo is fed to git clone
     my ($pkgbase, $repo);
 
     if ($opts->{b} =~ /^http/) {
@@ -149,7 +158,7 @@ sub main {
     elsif ($opts->{b} =~ /\.git$/){
         $repo = $opts->{b};
 
-        # if $path is just a name, not a real path...
+        # if $path is just a repo name, not a full path...
         if ( File::Basename::basename( $path ) eq $path ) {
             $pkgbase = '';
         }
@@ -160,11 +169,10 @@ sub main {
         }
     }
     else {
-        # -b was not provided
+        # -b was not provided 
+        # SHOULD NEVER BE REACHED
         die "unsupported base";
     }
-
-    # output should be a $repo and a $pkgbase
 
     my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
     my $build = "$dir/build";
