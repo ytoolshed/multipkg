@@ -148,8 +148,16 @@ sub main {
     }
     elsif ($opts->{b} =~ /\.git$/){
         $repo = $opts->{b};
-        $pkgbase = File::Basename::dirname($path);
-        $pkgbase = $path;
+
+        # if $path is just a name, not a real path...
+        if ( File::Basename::basename( $path ) eq $path ) {
+            $pkgbase = '';
+        }
+        else {
+            #otherwise, shave off the first part of the path
+            $pkgbase = $path;
+            $pkgbase =~ s{^[^/]+/}{};
+        }
     }
     else {
         # -b was not provided
