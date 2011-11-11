@@ -136,10 +136,14 @@ sub main {
     my ($pkgbase, $repo);
 
     if ($opts->{b} =~ /^http/) {
+        # can't use File::Spec->catdir for these because it'll destory the two
+        # slashes in http://whatever.com/repo
         my $repoid = getrepo($path);
+        $repoid =~ s{^/+}{};
         my $base = $opts->{b};
+        $base =~ s{/+$}{};
 
-        $repo = File::Spec->catdir($base, $repoid);
+        $repo = "${base}/${repoid}";
         $pkgbase = getpkgpath($path);
     }
     elsif ($opts->{b} =~ /\.git$/){
