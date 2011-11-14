@@ -15,6 +15,8 @@ use File::Basename;
 use File::Spec;
 use Getopt::Long;
 
+Getopt::Long::Configure("bundling");
+
 my $opt = {
     'b' => '',
     'r' => 'HEAD',
@@ -24,7 +26,7 @@ my $opt = {
 my %options = (
     'h|help'      => 'show usage information',
     'b|baseurl=s' => 'base URI for the git repo',
-    'N|branch=s'  => 'branch to build from',
+    'B|branch=s'  => 'branch to build from',
     'r|rev=s'     => 'revision to build (default=HEAD)',
     'k|keep'      => 'do not delete the working directory',
     'v|verbose'   => 'verbose output',
@@ -49,7 +51,7 @@ sub usage {
     -m, mtime          set mtime on files from last revision (NOT IMPLEMENTED)
     -b, baseuri=s      base URI for GIT repo
     -r, rev=s          revision to checkout
-    -N, branch=s       branch to build from (default=master)
+    -B, branch=s       branch to build from (default=master)
     -k, keep           keep the temporary directory
     -v, verbose        verbose
     -p, platform=s     platform
