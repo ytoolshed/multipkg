@@ -291,8 +291,10 @@ sub makepackage {
 
 sub cleanup {
   my $self = shift;
+  my $tmpdir = $ENV{TMPDIR} || '/tmp';
+  $tmpdir =~ s/\/$//;
   die "Unsafe to clean up " . $self->tmpdir
-    unless ( $self->tmpdir =~ /^\/tmp\/\w/ );
+    unless ( $self->tmpdir =~ /^$tmpdir\/\w/ );
 
   $self->infomsg( "Cleaning up " . $self->tmpdir );
   system( "rm -rf " . $self->tmpdir );
