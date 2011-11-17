@@ -13,3 +13,4 @@ default:
         - perl-YAML-Syck
         - subversion-perl
         - perl-Git
+        - perl-Error
