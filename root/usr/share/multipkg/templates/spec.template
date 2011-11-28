@@ -16,6 +16,11 @@ Obsoletes: %obsoletelist%
 %description
 %summary%
 
+%%ifscript(pre.sh)
+%pre
+%%pre.sh%%
+%%endif
+
 %%ifscript(post.sh)
 %post
 %%post.sh%%
@@ -26,3 +31,7 @@ Obsoletes: %obsoletelist%
 %%preun.sh%%
 %%endif
 
+%%ifscript(postun.sh)
+%postun
+%%postun.sh%%
+%%endif
