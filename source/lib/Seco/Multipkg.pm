@@ -57,6 +57,12 @@ sub build {
 
   my $builder;
 
+  $builder = Seco::Multipkg::Builder::Gem->new(
+    verbose => $self->verbose,
+    info    => $self->info,
+    force   => $self->force,
+    cwd     => $self->cwd
+  ) if ( $self->info->data->{packagetype} eq 'gem' );
   $builder = Seco::Multipkg::Builder::Rpm->new(
     verbose => $self->verbose,
     info    => $self->info,
@@ -467,6 +473,7 @@ sub build {
       . "PREFIX=$prefix PKGVERID=" 
       . $self->pkgverid . " "
       . "PACKAGEVERSION=" . $self->info->data->{version} . " "
+      . "PACKAGENAME=" . $self->info->data->{name} . " "
       . $self->info->scripts->{build} );
   # return $self->error("Error running: $@") if($@);
 
@@ -927,6 +934,60 @@ sub makepackage {
   return $deb;
 }
 
+package Seco::Multipkg::Builder::Gem;
+use base qw/Seco::Multipkg::Builder/;
+
+sub makepackage {
+  my $self = shift;
+
+  # shove the file list into $self->info->data->{filelist}
+  my $installdir = $self->installdir;
+  my $buildprefix = $self->info->data->{buildprefix};
+  my @filelist;
+
+  my $geminstalldir = `gem environment gemdir`;
+  chomp $geminstalldir;
+  my $fullinstalldir = $geminstalldir . "/gems/" . 
+    $self->info->data->{name} . "-" .
+      $self->info->data->{version};
+  foreach ($self->listdir("$installdir/$fullinstalldir")) {
+    if (-f "$installdir/$fullinstalldir/$_") {
+      s#^$installdir/$fullinstalldir/##;
+      s#^$buildprefix/##;
+      push @filelist, "\"$_\"";
+    }
+  }
+  $self->info->data->{filelist} = join ",", @filelist;
+  # generate the gemspec file based on that
+
+  my $name = $self->info->data->{name};
+  my $version = $self->info->data->{version};
+  
+  $self->runcmd("mkdir -p $installdir/$geminstalldir/specifications");
+  $self->template_file($self->info->confdir . "/templates/gemspec.template",
+                       "$installdir/$geminstalldir/specifications/" .
+                       "$name-$version.gemspec");
+  
+
+  chdir($installdir . "/" . $fullinstalldir);
+  my $gem = undef;
+  my @ten = $self->runcmd("gem build $installdir/$geminstalldir/" .
+                          "specifications/$name-$version.gemspec");
+  for my $gemline (@ten) {
+    if ($gemline =~ /File: (.*\.gem)/) {
+      $gem = $1;
+    }
+  }
+
+  unless ($gem) {
+    return $self->error("Can't find gem name");
+  }
+  File::Copy::copy($gem, $self->cwd . "/$gem")
+   or die "Unable to copy gem to cwd: $!";
+
+  return $gem;
+}
+
 package Seco::Multipkg::Builder::Tarball;
 use base qw/Seco::Multipkg::Builder/;
 
@@ -1063,6 +1124,8 @@ sub _init {
 
   if ( !$finaldata->{packagetype} ) {
     for ( reverse @platforms ) {
+      $finaldata->{packagetype} ||= 'gem'
+        if ( $_ eq 'gem' );
       $finaldata->{packagetype} ||= 'rpm'
         if ( $_ eq 'rpm' );
       $finaldata->{packagetype} ||= 'deb'

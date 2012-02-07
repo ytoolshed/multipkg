@@ -1,0 +1,10 @@
+Gem::Specification.new do |s|
+  s.name = "%name%"
+  s.version = "%version%"
+  s.date = "1970-01-01"
+  s.summary = "%summary%"
+  s.email = "a@b.net"
+  s.description = "%summary%"
+  s.authors = ["No Body"]
+  s.files = [ %filelist% ]
+end
