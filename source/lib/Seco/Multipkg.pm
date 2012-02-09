@@ -295,12 +295,46 @@ sub makepackage {
   die "makepackage not implemented";
 }
 
+sub install_gemspec {
+  my $self = shift;
+
+  # shove the file list into $self->info->data->{filelist}
+  my $installdir = $self->installdir;
+  my $buildprefix = $self->info->data->{buildprefix};
+  my @filelist;
+
+  my $geminstalldir = [$self->runcmd("gem environment gemdir")]->[0];
+  return $self->error("Can't run: $@") if($@);
+  
+  chomp $geminstalldir;
+  my $fullinstalldir = $geminstalldir . "/gems/" . 
+    $self->info->data->{name} . "-" .
+      $self->info->data->{version};
+  foreach ($self->listdir("$installdir/$fullinstalldir")) {
+    if (-f "$installdir/$fullinstalldir/$_") {
+      s#^$installdir/$fullinstalldir/##;
+      s#^$buildprefix/##;
+      push @filelist, "\"$_\"";
+    }
+  }
+  $self->info->data->{filelist} = join ",", @filelist;
+  # generate the gemspec file based on that
+
+  my $name = $self->info->data->{'name'};
+  my $version = $self->info->data->{'version'};
+  
+  $self->runcmd("mkdir -p $installdir/$geminstalldir/specifications");
+  $self->template_file($self->info->confdir . "/templates/gemspec.template",
+                       "$installdir/$geminstalldir/specifications/" .
+                       "$name-$version.gemspec");
+}
+
 sub cleanup {
   my $self = shift;
-  my $tmpdir = $ENV{TMPDIR} || '/tmp';
-  $tmpdir =~ s/\/$//;
-  die "Unsafe to clean up " . $self->tmpdir
-    unless ( $self->tmpdir =~ /^$tmpdir\/\w/ );
+#  my $tmpdir = $ENV{TMPDIR} || '/tmp';
+#  $tmpdir =~ s/\/$//;
+#  die "Unsafe to clean up " . $self->tmpdir
+#    unless ( $self->tmpdir =~ /^$tmpdir\/\w/ );
 
   $self->infomsg( "Cleaning up " . $self->tmpdir );
   system( "rm -rf " . $self->tmpdir );
@@ -746,6 +780,10 @@ sub makepackage {
   print $f "%files\n";
   print $f "%defattr(-,root,root)\n";
   my $installdir = $self->installdir;
+  if($self->info->data->{gem}) {
+    $self->install_gemspec;
+  }
+  
   foreach ( $self->listdir($installdir) ) {
     my $path = "$installdir/$_";
     next if m{/\.packlist$};    # XXX: cleanup in build, not here
@@ -947,7 +985,7 @@ sub makepackage {
 
   my $geminstalldir = `gem environment gemdir`;
   chomp $geminstalldir;
-  my $fullinstalldir = $geminstalldir . "/gems/" . 
+  my $fullinstalldir = $geminstalldir . "/gems/" .
     $self->info->data->{name} . "-" .
       $self->info->data->{version};
   foreach ($self->listdir("$installdir/$fullinstalldir")) {
@@ -958,17 +996,17 @@ sub makepackage {
     }
   }
   $self->info->data->{filelist} = join ",", @filelist;
+  
   # generate the gemspec file based on that
-
   my $name = $self->info->data->{name};
   my $version = $self->info->data->{version};
   
   $self->runcmd("mkdir -p $installdir/$geminstalldir/specifications");
+  
   $self->template_file($self->info->confdir . "/templates/gemspec.template",
                        "$installdir/$geminstalldir/specifications/" .
                        "$name-$version.gemspec");
   
-
   chdir($installdir . "/" . $fullinstalldir);
   my $gem = undef;
   my @ten = $self->runcmd("gem build $installdir/$geminstalldir/" .

@@ -51,14 +51,14 @@ if ( $o{s} ) {
 }
 
 # release must be specified unless we are making a test build.
-unless ( $o{t} || defined( $overrides{'release'} ) ) {
-  print "*****************************************************************************\n"
-    . "multipkg cannot be run directly by user unless building a test release via -t\n"
-    . "*****************************************************************************\n"
-    . "Use svn-multipkg/p4-multipkg to build directly from source checkout when\n"
-    . "creating packages for production deployment.\n\n";
-  exit(1);
-}
+#unless ( $o{t} || defined( $overrides{'release'} ) ) {
+#  print "*****************************************************************************\n"
+#    . "multipkg cannot be run directly by user unless building a test release via -t\n"
+#    . "*****************************************************************************\n"
+#    . "Use svn-multipkg/p4-multipkg to build directly from source checkout when\n"
+#    . "creating packages for production deployment.\n\n";
+#  exit(1);
+#}
 
 for (@ARGV) {
   my $mp = Seco::Multipkg->new(
