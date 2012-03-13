@@ -496,7 +496,7 @@ sub build {
 
     for my $patch (@patches) {
       $self->infomsg("Applying $patch");
-      $self->runcmd("patch -p 1 -d . < $patchdir/$patch");
+      $self->runcmd("patch --ignore-whitespace -p 1 -d . < $patchdir/$patch");
     }
   }
 
