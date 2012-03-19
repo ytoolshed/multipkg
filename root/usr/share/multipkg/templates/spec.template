@@ -35,3 +35,8 @@ Obsoletes: %obsoletelist%
 %postun
 %%postun.sh%%
 %%endif
+
+%%ifscript(posttrans.sh)
+%posttrans
+%%posttrans.sh%%
+%%endif
