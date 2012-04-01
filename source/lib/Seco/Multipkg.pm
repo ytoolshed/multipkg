@@ -123,8 +123,6 @@ use IPC::Open3;
 use FileHandle;
 use Fcntl ':mode';
 
-use File::FnMatch ':fnmatch';
-
 use constant MULTIPKG_VERSION => '__MULTIPKG_BUILD_VERSION__';
 
 use base qw/Seco::Class/;
@@ -687,8 +685,29 @@ sub _find_match_attributes {
   my $rules = shift;
 
   # return the last shell pattern match
-  my @found = ( grep { fnmatch( $_->{name}, $name, FNM_PATHNAME ) } (@$rules) );
+  my @found = ( grep { _fnmatch( $_->{name}, $name ) } (@$rules) );
   return pop(@found);
+}
+
+# pure-perl implementation of File::FnMatch::fnmatch with 'FNM_PATHNAME' argument
+sub _fnmatch {
+  my $pat = shift;
+  my $str = shift;
+
+  #dots are literal dots
+  $pat =~ s{\.}{\\\.}g;
+
+  #internal slashes must be escaped
+  $pat =~ s{/}{\\/}g;
+
+  #asterisks are everything but slash
+  $pat =~ s{\*}{[^\/]*}g;
+
+  #anchor it
+  $pat =~ s{^}{\^};
+  $pat =~ s{$}{\$};
+
+  return $str =~ m/$pat/;
 }
 
 sub _find_parent_attributes {
