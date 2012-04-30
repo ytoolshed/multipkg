@@ -1,0 +1,7 @@
+#!/bin/sh
+
+GEMDIR=$(gem environment gemdir)
+mkdir -p $DESTDIR/$GEMDIR/gems/$PACKAGENAME-$PACKAGEVERSION
+cp -a * $DESTDIR/$GEMDIR/gems/$PACKAGENAME-$PACKAGEVERSION
+
+

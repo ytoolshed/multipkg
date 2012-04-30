@@ -500,15 +500,26 @@ sub build {
 
   $self->infomsg("Building source");
 
-  # FATAL ON ERRORS
-  $self->runcmd( "PERL=$perl INSTALLROOT=$destdir DESTDIR=$destdir "
-      . "PREFIX=$prefix PKGVERID=" 
-      . $self->pkgverid . " "
-      . "PACKAGEVERSION=" . $self->info->data->{version} . " "
-      . "PACKAGENAME=" . $self->info->data->{name} . " "
-      . $self->info->scripts->{build} );
-  # return $self->error("Error running: $@") if($@);
-
+  if($self->info->data->{gem} and
+     $self->info->scripts->{gembuild}) {
+    # FATAL ON ERRORS
+    $self->runcmd( "PERL=$perl INSTALLROOT=$destdir DESTDIR=$destdir "
+		   . "PREFIX=$prefix PKGVERID=" 
+		   . $self->pkgverid . " "
+		   . "PACKAGEVERSION=" . $self->info->data->{version} . " "
+		   . "PACKAGENAME=" . $self->info->data->{name} . " "
+		   . $self->info->scripts->{build} );
+    return $self->error("Error running: $@") if($@);
+  } else {
+    # FATAL ON ERRORS
+    $self->runcmd( "PERL=$perl INSTALLROOT=$destdir DESTDIR=$destdir "
+		   . "PREFIX=$prefix PKGVERID=" 
+		   . $self->pkgverid . " "
+		   . "PACKAGEVERSION=" . $self->info->data->{version} . " "
+		   . "PACKAGENAME=" . $self->info->data->{name} . " "
+		   . $self->info->scripts->{build} );
+    return $self->error("Error running: $@") if($@);
+  }
   chdir $self->cwd;
 }
 
@@ -1248,7 +1259,7 @@ sub _init {
     $finaldata->{$k} = $self->overrides->{$k};
   }
 
-  $finaldata->{author} = 'm10n-prod-eng@yahoo-inc.com'
+  $finaldata->{author} = 'nobody@null'
     unless ( defined( $finaldata->{author} ) );
 
   $finaldata->{url} = $finaldata->{srcurl}
