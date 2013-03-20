@@ -971,8 +971,6 @@ sub makepackage {
     unless ( -d $self->installdir . "/DEBIAN" );
 
   # rename x86_64 to debian's amd64
-  use Data::Dumper;
-  print Dumper($self->info->data);
   if ($self->info->data->{arch} eq 'x86_64') {
     $self->info->data->{arch} = 'amd64';
   }
