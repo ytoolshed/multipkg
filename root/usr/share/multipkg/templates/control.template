@@ -1,0 +1,8 @@
+Package: %name%
+Version: %version%-%release%
+Architecture: %arch%
+Depends: %requirelist%
+Maintainer: %whoami%
+Source: %name%
+Description:
+ %summary%

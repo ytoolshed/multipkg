@@ -13,3 +13,13 @@ default:
         - subversion-perl
         - perl-Git
         - perl-Error
+deb:
+    arch: amd64
+    provides:
+        - perl-seco-class
+        - perl-seco-cpan
+    requires:
+        - libfile-fnmatch-perl
+        - libyaml-syck-perl
+        - libsvn-perl
+        - liberror-perl

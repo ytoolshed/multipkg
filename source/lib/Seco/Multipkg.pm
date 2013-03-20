@@ -970,7 +970,7 @@ sub makepackage {
   mkdir $self->installdir . "/DEBIAN"
     unless ( -d $self->installdir . "/DEBIAN" );
 
-  $self->template_file( $self->info->confdir . "/control.template",
+  $self->template_file( $self->info->confdir . "/templates/control.template",
     $self->installdir . "/DEBIAN/control" );
 
   my %trans = (
