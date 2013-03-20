@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ "$PERL" = "" ]; then
+if [ ! -x "$PERL" ]; then
     PERL=/usr/bin/perl
 fi
 if [ "$PREFIX" = "" ]; then
