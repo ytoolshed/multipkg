@@ -970,6 +970,13 @@ sub makepackage {
   mkdir $self->installdir . "/DEBIAN"
     unless ( -d $self->installdir . "/DEBIAN" );
 
+  # rename x86_64 to debian's amd64
+  use Data::Dumper;
+  print Dumper($self->info->data);
+  if ($self->info->data->{arch} eq 'x86_64') {
+    $self->info->data->{arch} = 'amd64';
+  }
+
   $self->template_file( $self->info->confdir . "/templates/control.template",
     $self->installdir . "/DEBIAN/control" );
 
@@ -1188,6 +1195,11 @@ sub _init {
         $finaldata->{$key} = $platdata->{$key};
       }
     }
+  }
+
+  if ( !$finaldata->{arch} ) {
+    $finaldata->{arch} = `uname -m`;
+    chomp $finaldata->{arch};
   }
 
   if ( !$finaldata->{packagetype} ) {

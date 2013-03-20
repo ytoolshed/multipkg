@@ -1,9 +1,10 @@
 default:
-    arch: noarch
     name: multipkg
     version: '1.2'
     summary: Automation for package builds (supports RPM, deb)
     buildprefix: /usr
+rpm:
+    arch: noarch
     provides:
         - Seco::Multipkg
         - perl-seco-class
@@ -14,7 +15,7 @@ default:
         - perl-Git
         - perl-Error
 deb:
-    arch: amd64
+    arch: all
     provides:
         - perl-seco-class
         - perl-seco-cpan

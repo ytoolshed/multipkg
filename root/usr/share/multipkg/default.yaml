@@ -4,11 +4,7 @@ default:
   perl: '/usr/bin/perl'
   version: '0.0001'
   shebangmunge: 1
-  arch: i686 x86_64
   os_specific: no
-
-deb:
-  perl: '/usr/local/bin/perl'
 
 rpm:
   autoreqprov: no
