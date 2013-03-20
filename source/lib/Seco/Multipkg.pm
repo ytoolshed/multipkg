@@ -803,6 +803,11 @@ sub makepackage {
 
   $self->info->data->{rpmtemprepo} = $self->tmpdir . "/rpm";
 
+  if ( !$self->info->data->{arch} ) {
+    $self->info->data->{arch} = `arch`;
+    chomp $self->info->data->{arch};
+  }
+
   $self->template_file( $self->info->confdir . "/templates/spec.template", 
                         $self->tmpdir . "/spec" );
 
@@ -970,9 +975,9 @@ sub makepackage {
   mkdir $self->installdir . "/DEBIAN"
     unless ( -d $self->installdir . "/DEBIAN" );
 
-  # rename x86_64 to debian's amd64
-  if ($self->info->data->{arch} eq 'x86_64') {
-    $self->info->data->{arch} = 'amd64';
+  if ( !$self->info->data->{arch} ) {
+    $self->info->data->{arch} = `dpkg --print-architecture`;
+    chomp $self->info->data->{arch};
   }
 
   $self->template_file( $self->info->confdir . "/templates/control.template",
@@ -1193,11 +1198,6 @@ sub _init {
         $finaldata->{$key} = $platdata->{$key};
       }
     }
-  }
-
-  if ( !$finaldata->{arch} ) {
-    $finaldata->{arch} = `uname -m`;
-    chomp $finaldata->{arch};
   }
 
   if ( !$finaldata->{packagetype} ) {
