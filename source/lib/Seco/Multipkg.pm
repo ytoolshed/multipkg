@@ -12,7 +12,7 @@ BEGIN {
   __PACKAGE__->_accessors(
     startdir      => undef,
     directory     => undef,
-    confdir       => '/home/jianingy/devel/multipkg/root/usr/share/multipkg',
+    confdir       => '__MULTIPKG_CONFIG_DIR__',
     info          => undef,
     cleanup       => 0,
     cwd           => undef,
@@ -1122,7 +1122,7 @@ use constant MULTIPKG_VERSION => '__MULTIPKG_BUILD_VERSION__';
 BEGIN {
   __PACKAGE__->_accessors(
     directory => undef,
-    confdir   => '/home/jianingy/devel/multipkg/root/usr/share/multipkg',
+    confdir   => '__MULTIPKG_CONFIG_DIR__',
     scripts   => undef,
     platform  => undef,
     overrides => {},
