@@ -12,6 +12,9 @@ autoreqprov: no
 Requires: %requirelist%
 Conflicts: %conflictlist%
 Obsoletes: %obsoletelist%
+%%ifset(prefix)
+Prefix: %prefix%
+%%endif
 
 %description
 %summary%

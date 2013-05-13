@@ -243,6 +243,24 @@ sub template_string {
       next;
     }
 
+    # XXX: use of '%' prefix potentially conflicts with RPM specfile syntax
+    if (/^%%ifset\(([A-Za-z\.]+)\)$/) {
+      my $match = $1;
+
+      # increase nesting count for every nested %%if statement when we are inside an
+      # %%if which evaluated false.
+      if ($skipping) {
+        $skipping++;
+        next;
+      }
+
+      # start skipping lines once we hit a false %%if statement.
+      if ( !$self->info->data->{$match} ) {
+        $skipping++;
+      }
+      next;
+    }
+
     # reduce the nesting count for each %%endif until we leave the original %%if
     # that evaluated false.
     if (/^%%endif$/) {
