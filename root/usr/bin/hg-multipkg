@@ -1,0 +1,189 @@
+#!/usr/bin/perl -w
+
+# Modified from Noah Meyerhans' git-multipkg, written by Jianing YANG
+# <jianingy.yang at gmail dot com>.
+
+# Copyright (c) 2011 Noah Meyerhans <frodo@morgul.net> All rights reserved.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of either:
+
+# a) the GNU General Public License as published by the Free
+#    Software Foundation, version 2, found in the included file GPLv2.
+# b) the Perl "Artistic License," found in the included file PERLARTISTIC.
+
+use strict;
+use Data::Dumper;
+use File::Temp;
+use File::Basename;
+use File::Spec;
+use Getopt::Long;
+
+Getopt::Long::Configure("bundling");
+
+my $opt = {
+    'b' => '',
+    'r' => 'tip',
+    'B' => 'default',
+};
+
+my %options = (
+    'h|help'      => 'show usage information',
+    'b|baseurl=s' => 'base URI for the mercurial repo',
+    'B|branch=s'  => 'branch to build from',
+    'r|rev=s'     => 'revision to build (default=HEAD)',
+    'k|keep'      => 'do not delete the working directory',
+    'v|verbose'   => 'verbose output',
+    'f|force'     => 'Force through multipkg errors',
+);
+
+usage() unless GetOptions( $opt, keys %options );
+my $package = shift;
+
+usage() if( $opt->{h} );
+usage() unless( $opt->{b} );
+usage() unless( $package );
+
+my $verbose = $opt->{v};
+
+sub usage {
+  print <<EOF;
+
+   Usage: $0 [options] <package>
+   Options:
+    -c, changelog      include changelog (NOT IMPLEMENTED)
+    -m, mtime          set mtime on files from last revision (NOT IMPLEMENTED)
+    -b, baseuri=s      base URI for Mercurial repo
+    -r, rev=s          revision to checkout
+    -B, branch=s       branch to build from (default=default)
+    -k, keep           keep the temporary directory
+    -v, verbose        verbose
+    -p, platform=s     platform
+    -s, set=s          List of variables to set
+    -f, force          Force through multipkg errors
+
+EOF
+  exit(0);
+}
+
+sub info { print "info: @_ \n" if ($verbose); }
+sub fatal { print "fatal: @_ \n"; exit 111; }
+
+# Clone the source repository to a local directory
+sub clone {
+    my ($repo, $target, $opts) = @_;
+    info("Cloning from $repo to $target");
+    my $out = qx(hg clone -u $opts->{B} $repo $target);
+    info($out);
+}
+
+# Call multipkg
+sub pkg {
+    my ($opts, $pkg, $srcdir, $build, $ts) = @_;
+    info("Invoking multipkg on $srcdir");
+    # options to pass through to multipkg
+    my @multipkg_opts = map { ("-$_") } grep { $opts->{$_} } (qw/k v f/);
+    my $vars = "release=$ts,srcurl=$opts->{b},srcdir=$srcdir";
+    print "BUILD:$build\n";
+    system("multipkg", '-s', $vars, @multipkg_opts, $build);
+}
+
+# Copy the contents of the hg repository to the build directory
+sub archive {
+    my ($src, $dest, $opts) = @_;
+    my $cwd = $ENV{PWD};
+    info("archiving $src to $dest");
+    my $cmd = "hg archive -p . -t tar -r $opts->{r} - | (cd $dest && tar xf -)";
+    info("Running $cmd");
+    chdir($src);
+    mkdir($dest);
+    system($cmd);
+    chdir($cwd);
+}
+
+sub get_timestamp {
+    my ($dir, $rev) = @_;
+    my $ts = 0;
+    my $oldPWD = $ENV{PWD};
+    info("Gathering revision timestamp information for $dir\@$rev");
+    chdir($dir) or die;
+    $ts = qx(hg log -r $rev --template '{date|hgdate}');
+    ($ts) = split /\s+/, $ts;
+    chdir($oldPWD);
+    die "Did not get a meaningful timestamp for $dir at $rev\n" unless($ts > 0);
+    return $ts;
+}
+
+sub getrepo {
+    my $path = shift;
+    return [ split '/', $path ]->[0];
+}
+
+sub getpkg {
+    my $path = shift;
+    return File::Basename::basename($path);
+}
+
+sub getpkgpath {
+    my $path = shift;
+    my $repo = getrepo($path);
+
+    my $pkgpath = $path;
+    $pkgpath =~ s{^$repo/?}{};
+    return $pkgpath;
+}
+
+sub main {
+    my ($opts, $path) = @_;
+
+    # Prepare the package, base and repo from the provided base URI
+
+    # Package name is always the same
+    my $pkg = getpkg($path);
+
+    # $pkgbase is contrived from the base uri and package path provided
+    # $repo is fed to hg clone
+    my ($pkgbase, $repo);
+
+    if ($opts->{b} =~ /^http/) {
+        # can't use File::Spec->catdir for these because it'll destory the two
+        # slashes in http://whatever.com/repo
+        my $repoid = getrepo($path);
+        $repoid =~ s{^/+}{};
+        my $base = $opts->{b};
+        $base =~ s{/+$}{};
+
+        $repo = "${base}/${repoid}";
+        $pkgbase = getpkgpath($path);
+    }
+    elsif ($opts->{b} =~ /\.hg$/){
+        $repo = $opts->{b};
+
+        # if $path is just a repo name, not a full path...
+        if ( File::Basename::basename( $path ) eq $path ) {
+            $pkgbase = '';
+        }
+        else {
+            #otherwise, shave off the first part of the path
+            $pkgbase = $path;
+            $pkgbase =~ s{^[^/]+/}{};
+        }
+    }
+    else {
+        # -b was not provided
+        # SHOULD NEVER BE REACHED
+        die "unsupported base";
+    }
+
+    my $dir = File::Temp::tempdir(CLEANUP => ( !defined($opts->{k}) ));
+    my $build = "$dir/build";
+    my $clonedir = "$dir/clone";
+    clone($repo, $clonedir, $opts);
+
+    my $srcdir = File::Spec->catdir($dir, 'src');
+    symlink File::Spec->catdir($clonedir, $pkgbase), $srcdir;
+    archive($srcdir, $build, $opts);
+    my $ts = get_timestamp($clonedir, $opts->{r});
+    pkg($opts, $pkg, $srcdir, $build, $ts);
+}
+
+main($opt, $package);
