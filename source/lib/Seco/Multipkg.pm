@@ -162,6 +162,15 @@ sub _init {
   $self->{_rules} = [ $self->get_file_rules ];
 }
 
+sub taroption {
+  my $self = shift;
+  my $tarball = shift;
+
+  return 'zxf' if $tarball =~ /\.(tar\.gz|tgz)$/;
+  return 'jxf' if $tarball =~ /\.(tar\.bz2|tbz)$/;
+  return 'Jxf' if $tarball =~ /\.(tar\.xz)$/;
+}
+
 sub setrelease {
   my $self = shift;
 
@@ -478,7 +487,8 @@ sub build {
     and -f $self->info->data->{sourcetar} )
   {
     $self->infomsg( "Building from " . $self->info->data->{sourcetar} );
-    system( "tar zxf $self->{info}->{data}->{sourcetar} " . "-C $self->{builddir}" );
+    my $tar_opt = $self->taroption($self->info->data->{sourcetar});
+    system( "tar $tar_opt $self->{info}->{data}->{sourcetar} " . "-C $self->{builddir}" );
     my $d;
     opendir $d, $self->builddir;
     foreach ( readdir $d ) {
@@ -670,7 +680,8 @@ sub copyroot {
     and -f $self->info->data->{roottar} )
   {
     $self->infomsg( "Using " . $self->info->data->{roottar} );
-    system( "tar zxf $self->{info}->{data}->{roottar} " . " -C $self->{installdir}" );
+    my $tar_opt = $self->taroption($self->info->data->{roottar});
+    system( "tar $tar_opt $self->{info}->{data}->{roottar} " . " -C $self->{installdir}" );
   }
 
   # install daemontools service
@@ -1188,10 +1199,11 @@ sub _init {
     $data->{$base}->{rootdir} ||= "$basedir/root"
       if ( -d "$basedir/root" );
 
-    $data->{$base}->{sourcetar} ||= "$basedir/source.tar.gz"
-      if ( -f "$basedir/source.tar.gz" );
-    $data->{$base}->{roottar} ||= "$basedir/root.tar.gz"
-      if ( -f "$basedir/root.tar.gz" );
+    my @suffix = qw(.tar.gz .tgz .tar.bz2 .tbz .tar.xz);
+    my @sourcetar = grep { -f } map { "$basedir/source$_" } @suffix;
+    my @roottar = grep { -f } map { "$basedir/root$_" } @suffix;
+    $data->{$base}->{sourcetar} ||= shift @sourcetar if @sourcetar;
+    $data->{$base}->{roottar} ||= shift @roottar if @roottar;
 
     for (qw/sourcedir rootdir/) {
       next unless ( $data->{$base} and $data->{$base}->{$_} );
