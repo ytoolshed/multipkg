@@ -440,32 +440,29 @@ sub runcmd {
   return @last;
 }
 
-sub build {
+sub fetch {
   my $self = shift;
+  my $target;
 
-  chdir $self->info->directory;
-  my $realbuild = $self->builddir;
+  # build cpan module
+  if ( $target = $self->info->data->{'cpan-module'} ) {
 
-  # check for cpan-module
-  if ( my $module = $self->info->data->{'cpan-module'} ) {
     eval { require Seco::CPAN; };
     die "Seco::CPAN required to install cpan modules" if ($@);
-    $self->infomsg("Fetching $module from CPAN");
-    mkdir $self->tmpdir . "/cpan";
-    my $cpan = Seco::CPAN->new(
+    $self->infomsg("Fetching $target from CPAN");
+    my $agent = Seco::CPAN->new(
       depositdir => ( $self->tmpdir . "/cpan" ),
       tmpdir     => $self->tmpdir
     );
-    my $hash = $cpan->pull($module)
-      or die "Unable to pull $module: $!";
-    my $loc  = $hash->{tarball};
-    my $name = lc $hash->{name};
-    $name =~ s/::/-/g;
-    my $version = $hash->{version};
-    my $prefix  = 'cpan';
 
-    if ( "$prefix-$name" ne $self->info->data->{name} ) {
-      $self->forceok( "Package wants to be called $prefix-$name, "
+    my $hash = $agent->pull($target)
+      or die "Unable to pull $target: $!";
+    my $name = lc $hash->{name};
+    my $loc  = $hash->{tarball};
+    my $version = $hash->{version};
+
+    if ( $name ne $self->info->data->{name} ) {
+      $self->forceok( "Package wants to be called $name, "
           . "you asked for "
           . $self->info->data->{name}
           . "\n" );
@@ -474,7 +471,36 @@ sub build {
     $self->info->data->{sourcetar} = $loc;
     $self->info->data->{version}   = $version;
 
+  } 
+  # build from http
+  elsif ( $target = $self->info->data->{'http'} ) {
+
+    eval { require Seco::HTTP; };
+    die "Seco::HTTP required to build package from web: $@" if ($@);
+    $self->infomsg("Fetching $target");
+    my $agent = Seco::HTTP->new(
+      xfercmd    => $self->info->data->{xfercmd},
+      depositdir => ( $self->tmpdir . "/source" ),
+      tmpdir     => $self->tmpdir
+    );
+
+    my $hash = $agent->pull($target)
+      or die "Unable to pull $target: $!";
+    my $loc  = $hash->{tarball};
+
+    $self->info->data->{sourcetar} = $loc;
+
   }
+}
+
+sub build {
+  my $self = shift;
+
+  chdir $self->info->directory;
+  my $realbuild = $self->builddir;
+
+  # fetch source from remote
+  $self->fetch();
 
   # build the source if there is any
   if ( $self->info->data->{sourcedir} and -d $self->info->data->{sourcedir} ) {

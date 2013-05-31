@@ -18,6 +18,7 @@ BEGIN {
 
 sub _init {
     my $self = shift;
+    mkdir $self->depositdir;
     $self->tmpdir(tempdir(CLEANUP => 0))
       unless(-d $self->tmpdir);
     return 1;
@@ -93,8 +94,9 @@ sub pull {
     system('cp', $tarball, $self->depositdir);
     return undef if($? >> 8);
     $tarball =~ s/^.*\///;
+    $name =~ s/::/-/g;
     return { tarball => $self->depositdir . "/" . $tarball,
-             name => $name,
+             name => 'cpan-' . $name,
              version => $version };
 }
 

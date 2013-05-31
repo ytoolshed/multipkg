@@ -1,0 +1,3 @@
+#!/bin/sh
+./configure --prefix=/opt/nginx --without-pcre --without-http_gzip_module --without-http_rewrite_module
+make install DESTDIR=$DESTDIR

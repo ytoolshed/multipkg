@@ -5,6 +5,7 @@ default:
   version: '0.0001'
   shebangmunge: 1
   os_specific: no
+  xfercmd: '/usr/bin/curl -s -o %s %u'
 
 rpm:
   autoreqprov: no
