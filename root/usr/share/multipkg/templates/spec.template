@@ -43,3 +43,8 @@ Prefix: %prefix%
 %posttrans
 %%posttrans.sh%%
 %%endif
+
+%%ifscript(verifyscript.sh)
+%verifyscript
+%%verifyscript.sh%%
+%%endif
