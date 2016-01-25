@@ -179,6 +179,8 @@ sub setrelease {
   # build from source checkout
   $self->info->data->{release} = sprintf "0.%u", time()
     unless ( defined $self->info->data->{release} );
+  $self->info->data->{release} .= "." . $self->info->data->{os}
+    if (defined($self->info->data->{os}));
 }
 
 sub pkgverid {
